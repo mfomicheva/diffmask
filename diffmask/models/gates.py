@@ -147,7 +147,7 @@ class DiffMaskGateHidden(torch.nn.Module):
     def forward(self, hidden_states, mask, layer_pred):
 
         if layer_pred is not None:
-            logits = self.g_hat[layer_pred](hidden_states[layer_pred])
+            logits = self.g_hat[layer_pred](hidden_states[layer_pred]) # this is z, shape [1, T], indicating whether to keep each token
         else:
             logits = torch.cat(
                 [self.g_hat[i](hidden_states[i]) for i in range(len(hidden_states))], -1

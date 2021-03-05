@@ -43,7 +43,7 @@ class ToyTaskModelDiffMask(ToyTaskModel):
         }
 
         with torch.no_grad():
-            logits_orig, hidden_states = toy_getter(self, inputs_dict)
+            logits_orig, hidden_states = toy_getter(self, inputs_dict)  # logits_orig is model prediction, shape [1]
 
         if layer_drop is None:
             layer_drop = torch.randint(2, ()).item()
@@ -53,7 +53,7 @@ class ToyTaskModelDiffMask(ToyTaskModel):
 
         logits = self.gate[layer_drop](
             hidden_states[1 + layer_drop], hidden_states[1 + layer_pred],
-        ).squeeze(-1)
+        ).squeeze(-1)  # this is z, shape [1, T], indicating whether to keep each token
 
         dist = RectifiedStreched(
             BinaryConcrete(torch.full_like(logits, 0.2), logits), l=-0.2, r=1.0,
@@ -78,9 +78,7 @@ class ToyTaskModelDiffMask(ToyTaskModel):
                 [None] * (layer_drop + 1)
                 + [
                     hidden_states[layer_drop + 1] * gates.unsqueeze(-1)
-                    + self.placeholder[
-                        :, layer_drop, :, : hidden_states[layer_drop + 1].shape[-1]
-                    ]
+                    + self.placeholder[:, layer_drop, :, :hidden_states[layer_drop + 1].shape[-1]]
                     * (1 - gates.unsqueeze(-1))
                 ]
                 + [None] * (len(hidden_states) - layer_drop + 1 - 1)

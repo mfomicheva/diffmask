@@ -10,7 +10,7 @@ class ToyTaskModel(pl.LightningModule):
         self.hparams = hparams
 
         self.embedding_query = torch.nn.Embedding(
-            num_embeddings=hparams.num_embeddings, embedding_dim=hparams.embedding_dim
+            num_embeddings=hparams.num_embeddings, embedding_dim=hparams.embedding_dim  # num_embeddings is vocab_size
         )
 
         self.embedding_input = torch.nn.Embedding(
@@ -65,6 +65,11 @@ class ToyTaskModel(pl.LightningModule):
                     )
                 )
             ).long()
+            # max seq length will be 10, this mask masks different number of tokens for each sequence,
+            # resulting in sequences of different lengths
+            # e.g. tensor([[ True,  True,  True,  True, False, False, False, False, False, False],
+            #         [ True,  True, False, False, False, False, False, False, False, False]])
+            # (actually, converted to 0 and 1 with .long())
 
             input_ids = torch.where(
                 mask.bool(), input_ids, torch.full_like(input_ids, -1),
