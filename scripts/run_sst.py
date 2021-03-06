@@ -12,7 +12,7 @@ from diffmask.models.sentiment_classification_sst import (
     BertSentimentClassificationSST,
     RecurrentSentimentClassificationSST,
 )
-from diffmask.utils import CallbackSST
+from diffmask.utils.callbacks import CallbackSST
 
 
 if __name__ == "__main__":

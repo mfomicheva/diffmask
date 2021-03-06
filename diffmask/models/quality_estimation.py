@@ -4,7 +4,10 @@ from transformers import (
     XLMRobertaTokenizer,
     XLMRobertaForSequenceClassification,
     XLMRobertaConfig,
+    get_constant_schedule_with_warmup,
 )
+
+from ..utils.util import accuracy_precision_recall_f1
 
 
 def _truncate_seq_pair(tokens_a, tokens_b, max_length):
@@ -89,6 +92,62 @@ class QualityEstimation(pl.LightningModule):
         return torch.utils.data.DataLoader(
             self.val_dataset, batch_size=self.hparams.batch_size
         )
+
+    def training_step(self, batch, batch_idx=None):
+        input_ids, mask, _, labels = batch
+
+        logits = self.forward(input_ids, mask)[0]
+        loss = torch.nn.functional.cross_entropy(logits, labels, reduction="none").mean(-1)
+        acc, _, _, f1 = accuracy_precision_recall_f1(logits.argmax(-1), labels, average=True)
+
+        outputs_dict = {
+            "acc": acc,
+            "f1": f1,
+        }
+
+        outputs_dict = {
+            "loss": loss,
+            **outputs_dict,
+            "log": outputs_dict,
+            "progress_bar": outputs_dict,
+        }
+
+        outputs_dict = {
+            "{}{}".format("" if self.training else "val_", k): v
+            for k, v in outputs_dict.items()
+        }
+
+        return outputs_dict
+
+    def validation_step(self, batch, batch_idx=None):
+        return self.training_step(batch, batch_idx)
+
+    def validation_epoch_end(self, outputs):
+
+        outputs_dict = {
+            k: sum(e[k] for e in outputs) / len(outputs) for k in ("val_acc", "val_f1")
+        }
+
+        outputs_dict = {
+            "val_loss": -outputs_dict["val_f1"],
+            **outputs_dict,
+            "log": outputs_dict,
+        }
+
+        return outputs_dict
+
+    def configure_optimizers(self):
+        optimizers = [
+            torch.optim.Adam(self.parameters(), self.hparams.learning_rate),
+        ]
+        schedulers = [
+            {
+                "scheduler": get_constant_schedule_with_warmup(optimizers[0], 200),
+                "interval": "step",
+            },
+        ]
+
+        return optimizers, schedulers
 
 
 class QualityEstimationClassification(QualityEstimation):
