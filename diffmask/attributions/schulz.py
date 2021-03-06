@@ -1,6 +1,7 @@
 import torch
 from tqdm.auto import tqdm, trange
 from ..utils.getter_setter import (
+    roberta_getter,
     bert_getter,
     bert_setter,
     gru_getter,
@@ -91,6 +92,36 @@ def bert_hidden_states_statistics(model, input_only=True):
                 hidden_states = [model.net.bert.embeddings.word_embeddings(batch[0])]
             else:
                 _, hidden_states = bert_getter(
+                    model.net,
+                    {
+                        "input_ids": batch[0],
+                        "attention_mask": batch[1],
+                        **({"token_type_ids": batch[2]} if len(batch) == 5 else {}),
+                    },
+                )
+            all_hidden_states.append(torch.stack(hidden_states).cpu())
+
+        all_q_z_loc = sum([e.sum(1) for e in all_hidden_states]) / sum(
+            [e.shape[1] for e in all_hidden_states]
+        )
+        all_q_z_scale = (
+            sum(((all_q_z_loc.unsqueeze(1) - e) ** 2).sum(1) for e in all_hidden_states)
+            / sum([e.shape[1] for e in all_hidden_states])
+        ).sqrt()
+
+    return all_q_z_loc, all_q_z_scale
+
+
+def roberta_hidden_states_statistics(model, input_only=True):
+
+    with torch.no_grad():
+        all_hidden_states = []
+        for batch in tqdm(model.train_dataloader()):
+            batch = tuple(e.to(next(model.parameters()).device) for e in batch)
+            if input_only:
+                hidden_states = [model.net.roberta.embeddings.word_embeddings(batch[0])]
+            else:
+                _, hidden_states = roberta_getter(
                     model.net,
                     {
                         "input_ids": batch[0],

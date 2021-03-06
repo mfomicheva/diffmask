@@ -3,6 +3,46 @@ from transformers import BertForSequenceClassification
 from collections import defaultdict
 
 
+def roberta_getter(model, inputs_dict, forward_fn=None):
+
+    hidden_states_ = []
+
+    def get_hook(i):
+        def hook(module, inputs, outputs=None):
+            if i == 0:
+                hidden_states_.append(outputs)
+            elif 1 <= i <= len(model.roberta.encoder.layer):
+                hidden_states_.append(inputs[0])
+            elif i == len(model.roberta.encoder.layer) + 1:
+                hidden_states_.append(outputs[0])
+
+        return hook
+
+    handles = (
+        [model.roberta.embeddings.word_embeddings.register_forward_hook(get_hook(0))]
+        + [
+            layer.register_forward_pre_hook(get_hook(i + 1))
+            for i, layer in enumerate(model.roberta.encoder.layer)
+        ]
+        + [
+            model.roberta.encoder.layer[-1].register_forward_hook(
+                get_hook(len(model.roberta.encoder.layer) + 1)
+            )
+        ]
+    )
+
+    try:
+        if forward_fn is None:
+            outputs = model(**inputs_dict)
+        else:
+            outputs = forward_fn(**inputs_dict)
+    finally:
+        for handle in handles:
+            handle.remove()
+
+    return outputs, tuple(hidden_states_)
+
+
 def bert_getter(model, inputs_dict, forward_fn=None):
 
     hidden_states_ = []
