@@ -89,3 +89,16 @@ class QualityEstimation(pl.LightningModule):
         return torch.utils.data.DataLoader(
             self.val_dataset, batch_size=self.hparams.batch_size
         )
+
+
+class QualityEstimationClassification(QualityEstimation):
+
+    def __init__(self, hparams):
+        super().__init__(hparams)
+
+        config = XLMRobertaConfig.from_pretrained(self.hparams.model)
+        config.num_labels = 5
+        self.net = XLMRobertaForSequenceClassification.from_pretrained(self.hparams.model, config=config)
+
+    def forward(self, input_ids, mask, labels=None):
+        return self.net(input_ids=input_ids, attention_mask=mask)
