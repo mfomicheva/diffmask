@@ -40,6 +40,30 @@ def print_attributions(tokens, attributions, special=True):
     )
 
 
+def find_word_with_max_attribution(tokens, attributions, target_words):
+    eos = tokens.index('</s>')
+    target_tokens = tokens[eos + 2:]
+    target_attributions = attributions[eos + 2:]
+    char_to_word = {}
+    char_count = 0
+    for i, w in enumerate(target_words):
+        for _ in w:
+            char_to_word[char_count] = i
+            char_count += 1
+    char_count = 0
+    max_attr = 0
+    max_word = None
+    for tok, attr in zip(target_tokens, target_attributions):
+        if tok == '<s>' or tok == '</s>':
+            continue
+        for _ in tok.lstrip('▁'):
+            if attr > max_attr:
+                max_word = char_to_word[char_count]
+                max_attr = attr
+            char_count += 1
+    return max_word
+
+
 def plot_sst_attributions(attributions, tokens, name=None, save=False):
     fig = plt.figure(figsize=(9, len(tokens) / 3))
     fig.add_subplot(111, aspect=1.5)
