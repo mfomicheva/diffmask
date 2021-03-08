@@ -53,6 +53,7 @@ def find_word_with_max_attribution(tokens, attributions, words, N=3):
             char_count += 1
     char_count = 0
     max_attr_h = []
+    word_attr_d = dict()
     curr_word = None
     curr_max = 0
     for tok, attr in zip(target_tokens, target_attributions):
@@ -62,15 +63,16 @@ def find_word_with_max_attribution(tokens, attributions, words, N=3):
             if curr_word is None:
                 curr_word = char_to_word[char_count]
             if curr_word != char_to_word[char_count]:
-                print(words[curr_word])
-                print(curr_max)
                 heapq.heappush(max_attr_h, (curr_max, curr_word))
+                word_attr_d[curr_word] = curr_max * -1
                 curr_word = char_to_word[char_count]
                 curr_max = 0
             if attr * -1 < curr_max:
                 curr_max = attr * -1
             char_count += 1
-    return [t[1] for t in max_attr_h[:N]]
+    heapq.heappush(max_attr_h, (curr_max, curr_word))
+    word_attr_d[curr_word] = curr_max
+    return max_attr_h[:N], word_attr_d
 
 
 def plot_sst_attributions(attributions, tokens, name=None, save=False):
