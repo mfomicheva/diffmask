@@ -82,6 +82,13 @@ class QualityEstimation(pl.LightningModule):
             self.hparams.src_val_filename, self.hparams.tgt_val_filename, self.hparams.labels_val_filename,
             self.tokenizer,
         )
+        self.test_dataset = None
+        self.test_dataset_orig = None
+        if self.hparams.src_test_filename is not None:
+            self.test_dataset, self.test_dataset_orig = load_sent_level(
+                self.hparams.src_test_filename, self.hparams.tgt_test_filename, self.hparams.labels_test_filename,
+                self.tokenizer,
+            )
 
     def train_dataloader(self):
         return torch.utils.data.DataLoader(
