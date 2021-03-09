@@ -4,7 +4,6 @@ import colorsys
 from sty import bg
 import matplotlib.pyplot as plt
 from matplotlib import lines
-import heapq
 
 
 def _get_color(attr):
@@ -39,40 +38,6 @@ def print_attributions(tokens, attributions, special=True):
             ]
         )
     )
-
-
-def find_word_with_max_attribution(tokens, attributions, words, N=3):
-    eos = tokens.index('</s>')
-    target_tokens = tokens[eos + 2:]
-    target_attributions = attributions[eos + 2:]
-    char_to_word = {}
-    char_count = 0
-    for i, w in enumerate(words):
-        for _ in w:
-            char_to_word[char_count] = i
-            char_count += 1
-    char_count = 0
-    max_attr_h = []
-    word_attr_d = dict()
-    curr_word = None
-    curr_max = 0
-    for tok, attr in zip(target_tokens, target_attributions):
-        if tok == '<s>' or tok == '</s>':
-            continue
-        for _ in tok.lstrip('▁'):
-            if curr_word is None:
-                curr_word = char_to_word[char_count]
-            if curr_word != char_to_word[char_count]:
-                heapq.heappush(max_attr_h, (curr_max, curr_word))
-                word_attr_d[curr_word] = curr_max * -1
-                curr_word = char_to_word[char_count]
-                curr_max = 0
-            if attr * -1 < curr_max:
-                curr_max = attr * -1
-            char_count += 1
-    heapq.heappush(max_attr_h, (curr_max, curr_word))
-    word_attr_d[curr_word] = curr_max
-    return [t[1] for t in max_attr_h[:N]], word_attr_d
 
 
 def plot_sst_attributions(attributions, tokens, num_layers=14, name=None, save=False):
