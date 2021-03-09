@@ -71,12 +71,13 @@ def schulz_explainer(
         loss.backward()
         optimizer.step()
 
-        t.set_postfix(
-            loss="{:.2f}".format(loss.item()),
-            loss_model="{:.2f}".format(loss_model.item()),
-            loss_kl="{:.2f}".format(loss_kl.item()),
-            refresh=False,
-        )
+        if verbose:
+            t.set_postfix(
+                loss="{:.2f}".format(loss.item()),
+                loss_model="{:.2f}".format(loss_model.item()),
+                loss_kl="{:.2f}".format(loss_kl.item()),
+                refresh=False,
+            )
 
     attributions = alpha.sigmoid().detach()
 
