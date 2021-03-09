@@ -27,6 +27,7 @@ def make_input_data(model, device, use_test=False):
 
 
 def top1_accuracy(eval_data, predictions, attributions):
+    # eval_data: List[Dict]
     # predictions: List[List]
     # for each sentence a list of N indexes with highest attribution score
     # attributions: List[Dict]
@@ -35,11 +36,11 @@ def top1_accuracy(eval_data, predictions, attributions):
     correct_by_sent = 0
     for i in range(len(eval_data)):
         try:
-            assert len(eval_data['word_labels'][i]) == len(attributions[i])
+            assert len(eval_data[i]['word_labels']) == len(attributions[i])
         except AssertionError:
             print('Sequence too long. Skipping')
             continue
-        gold_error_indices = set([idx for idx, val in enumerate(eval_data['word_labels'][i]) if val == 1])
+        gold_error_indices = set([idx for idx, val in enumerate(eval_data[i]['word_labels']) if val == 1])
         if any([idx in gold_error_indices for idx in predictions[i]]):
             correct_by_sent += 1
         total_by_sent += 1
@@ -54,11 +55,11 @@ def auc_score(eval_data, attributions):
     yhats = []
     for i in range(len(eval_data['word_labels'])):
         try:
-            assert len(eval_data['word_labels'][i]) == len(attributions[i])
+            assert len(eval_data[i]['word_labels']) == len(attributions[i])
         except AssertionError:
             print('Sequence too long. Skipping')
             continue
-        for idx, val in enumerate(eval_data['word_labels'][i]):
+        for idx, val in enumerate(eval_data[i]['word_labels']):
             ys.append(val)
             yhats.append(attributions[i][idx])
 
