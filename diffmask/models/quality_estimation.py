@@ -22,13 +22,25 @@ def _truncate_seq_pair(tokens_a, tokens_b, max_length):
             tokens_b.pop()
 
 
-def load_sent_level(path_src, path_tgt, path_labels, tokenizer, max_seq_length=128):
+def load_sent_level(path_src, path_tgt, path_labels, tokenizer, max_seq_length=128, path_word_labels=None):
+
     def _read_file(path, label=False):
         return [float(l.strip()) if label else l.strip() for l in open(path)]
+
+    def _read_word_labels(path):
+        out = []
+        for l in open(path):
+            out.append([int(val.strip()) for val in l.split()])
+        return out
+
     srcs = _read_file(path_src)
     tgts = _read_file(path_tgt)
     labels = _read_file(path_labels, label=True)
     assert len(srcs) == len(tgts) == len(labels)
+    word_labels = None
+    if path_word_labels is not None:
+        word_labels = _read_word_labels(path_word_labels)
+        assert len(word_labels) == len(srcs)
     data_tuples = []
     data_text = []
     for i in range(len(srcs)):
@@ -56,7 +68,8 @@ def load_sent_level(path_src, path_tgt, path_labels, tokenizer, max_seq_length=1
         assert len(input_mask) == max_seq_length
         assert len(segment_ids) == max_seq_length
         data_tuples.append((input_ids, input_mask, segment_ids, labels[i]))
-        data_text.append((srcs[i], tgts[i], labels[i]))
+        word_labels_i = word_labels[i] if word_labels else None
+        data_text.append((srcs[i], tgts[i], labels[i], word_labels_i))
 
     tensor_dataset = [
         torch.tensor([d[0] for d in data_tuples], dtype=torch.long),
@@ -76,18 +89,18 @@ class QualityEstimation(pl.LightningModule):
     def prepare_data(self):
         self.train_dataset, self.train_dataset_orig = load_sent_level(
             self.hparams.src_train_filename, self.hparams.tgt_train_filename, self.hparams.labels_train_filename,
-            self.tokenizer,
+            self.tokenizer, path_word_labels=self.hparams.word_labels_train_filename,
         )
         self.val_dataset, self.val_dataset_orig = load_sent_level(
             self.hparams.src_val_filename, self.hparams.tgt_val_filename, self.hparams.labels_val_filename,
-            self.tokenizer,
+            self.tokenizer, path_word_labels=self.hparams.word_labels_val_filename
         )
         self.test_dataset = None
         self.test_dataset_orig = None
         if self.hparams.src_test_filename is not None:
             self.test_dataset, self.test_dataset_orig = load_sent_level(
                 self.hparams.src_test_filename, self.hparams.tgt_test_filename, self.hparams.labels_test_filename,
-                self.tokenizer,
+                self.tokenizer, path_word_labels=self.hparams.word_labels_test_filename
             )
 
     def train_dataloader(self):
