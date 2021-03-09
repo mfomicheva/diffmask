@@ -14,7 +14,8 @@ class CallbackSST(pl.Callback):
 
 
 class CallbackQE(CallbackSST):
-    pass
+    def on_train_end(self, trainer, pl_module):
+        torch.save(pl_module, pl_module.hparams.model_path)
 
 
 class CallbackSSTDiffMask(pl.Callback):
