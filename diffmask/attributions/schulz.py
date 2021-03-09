@@ -24,6 +24,7 @@ def schulz_explainer(
     steps=10,
     lr=1e-1,
     la=10,
+    verbose=False,
 ):
 
     with torch.no_grad():
@@ -37,7 +38,7 @@ def schulz_explainer(
     )
     optimizer = torch.optim.RMSprop([alpha], lr=lr, centered=True)
 
-    t = trange(steps)
+    t = trange(steps) if verbose else range(steps)
     for _ in t:
         optimizer.zero_grad()
         gates = alpha.sigmoid()
