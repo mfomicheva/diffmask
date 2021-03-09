@@ -75,7 +75,7 @@ def find_word_with_max_attribution(tokens, attributions, words, N=3):
     return [t[1] for t in max_attr_h[:N]], word_attr_d
 
 
-def plot_sst_attributions(attributions, tokens, name=None, save=False):
+def plot_sst_attributions(attributions, tokens, num_layers=14, name=None, save=False):
     fig = plt.figure(figsize=(9, len(tokens) / 3))
     fig.add_subplot(111, aspect=1.5)
     fig.patch.set_facecolor("white")
@@ -85,7 +85,7 @@ def plot_sst_attributions(attributions, tokens, name=None, save=False):
         linewidth=0.01,
     )
     plt.yticks(torch.arange(len(tokens)) + 0.5, reversed(tokens), size=16)
-    plt.xticks(torch.arange(0, 13, 3) + 0.5, ["E"] + list(range(3, 13, 3)), size=16)
+    plt.xticks(torch.arange(0, num_layers - 1, 3) + 0.5, ["E"] + list(range(3, num_layers - 1, 3)), size=16)
 
     if save:
         plt.savefig(name, bbox_inches="tight", pad_inches=0)
