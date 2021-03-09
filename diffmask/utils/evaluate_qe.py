@@ -65,18 +65,23 @@ def get_layer_attributions(model, getter, setter, all_q_z_loc, all_q_z_scale, de
     return attributions
 
 
-def get_all_attributions(model, getter, setter, all_q_z_loc, all_q_z_scale, device, inputs_dict, num_layers=14):
+def get_all_attributions(model, getter, setter, all_q_z_loc, all_q_z_scale, device, inputs_dict, num_layers=14, return_mean=False):
     attributions = torch.cat([get_layer_attributions(model, getter, setter, all_q_z_loc, all_q_z_scale, device, inputs_dict, i) for i in range(num_layers)], 0).T
     print(attributions.shape)  # T, L
+    if return_mean:
+        attributions = torch.mean(attributions, dim=-1)
     attributions = attributions[:inputs_dict["mask"].sum(-1).item()].cpu()
     return attributions
 
 
-def make_predictions(model, getter, setter, all_q_z_loc, all_q_z_scale, device, input_data, eval_data):
+def make_predictions(model, getter, setter, all_q_z_loc, all_q_z_scale, device, input_data, eval_data, num_layers=14, layer_idx=7):
     predictions = []
     max_attributions = []
     for i, item in enumerate(input_data):
-        attributions = get_layer_attributions(model, getter, setter, all_q_z_loc, all_q_z_scale, device, item, 7)
+        if layer_idx == -1:
+            attributions = get_all_attributions(model, getter, setter, all_q_z_loc, all_q_z_scale, device, item, num_layers=num_layers, return_mean=True)
+        else:
+            attributions = get_layer_attributions(model, getter, setter, all_q_z_loc, all_q_z_scale, device, item, layer_idx)
         attributions = attributions[:item["mask"].sum(-1).item()].cpu()
         error_index, max_word_attributions = find_word_with_max_attribution(
             eval_data[i]['tokens'], attributions.squeeze(), eval_data[i]['words'])
