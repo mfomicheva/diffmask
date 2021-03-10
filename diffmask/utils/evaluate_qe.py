@@ -66,8 +66,7 @@ def get_layer_attributions(model, getter, setter, all_q_z_loc, all_q_z_scale, de
 
 
 def get_all_attributions(model, getter, setter, all_q_z_loc, all_q_z_scale, device, inputs_dict, num_layers=14, return_mean=False):
-    attributions = torch.cat([get_layer_attributions(model, getter, setter, all_q_z_loc, all_q_z_scale, device, inputs_dict, i) for i in range(num_layers)], 0).T
-    print(attributions.shape)  # T, L
+    attributions = torch.cat([get_layer_attributions(model, getter, setter, all_q_z_loc, all_q_z_scale, device, inputs_dict, i) for i in range(num_layers)], 0).T  # T, L
     if return_mean:
         attributions = torch.mean(attributions, dim=-1)
     attributions = attributions[:inputs_dict["mask"].sum(-1).item()].cpu()
@@ -107,6 +106,7 @@ def make_input_data(model, device, use_test=False):
             eval_data.append({
                 'tokens': model.tokenizer.convert_ids_to_tokens(
                     inputs_dict["input_ids"].squeeze()[:inputs_dict["mask"].sum(-1).item()].squeeze()),
+                'source': dataset_orig[i][0].split(),
                 'words': dataset_orig[i][1].split(),
                 'word_labels': dataset_orig[i][3],
                 'sent_label': label.unsqueeze(0),
