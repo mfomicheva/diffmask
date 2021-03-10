@@ -1,158 +1,165 @@
-import heapq
 import torch
+import numpy as np
 
 from sklearn.metrics import roc_curve, roc_auc_score
 from matplotlib import pyplot
 
-from diffmask.attributions.schulz import schulz_explainer
+from diffmask.attributions.schulz import schulz_explainer, roberta_hidden_states_statistics
 
 
-def find_word_with_max_attribution(tokens, attributions, words, N=3):
-    eos = tokens.index('</s>')
-    target_tokens = tokens[eos + 2:]
-    target_attributions = attributions[eos + 2:]
-    char_to_word = {}
-    char_count = 0
-    for i, w in enumerate(words):
-        for _ in w:
-            char_to_word[char_count] = i
-            char_count += 1
-    char_count = 0
-    max_attr_h = []
-    word_attr_d = dict()
-    curr_word = None
-    curr_max = 0
-    for tok, attr in zip(target_tokens, target_attributions):
-        if tok == '<s>' or tok == '</s>':
-            continue
-        for _ in tok.lstrip('▁'):
-            if curr_word is None:
-                curr_word = char_to_word[char_count]
-            if curr_word != char_to_word[char_count]:
-                heapq.heappush(max_attr_h, (curr_max, curr_word))
-                word_attr_d[curr_word] = curr_max * -1
-                curr_word = char_to_word[char_count]
-                curr_max = 0
-            if attr * -1 < curr_max:
-                curr_max = attr * -1
-            char_count += 1
-    heapq.heappush(max_attr_h, (curr_max, curr_word))
-    word_attr_d[curr_word] = curr_max * -1
-    return [t[1] for t in max_attr_h[:N]], word_attr_d
+class AttributionsQE:
 
+    def __init__(self, model, getter, setter, layer_indexes, device, use_mean=False, split='valid'):
+        self.model = model
+        self.getter = getter
+        self.setter = setter
+        self.layer_indexes = layer_indexes
+        self.use_mean = use_mean
+        self.split = split
+        self.device = device
 
-def get_layer_attributions(model, getter, setter, all_q_z_loc, all_q_z_scale, device, inputs_dict, hidden_state_idx):
-    attributions = schulz_explainer(
-        model.net,
-        inputs_dict={
-            "input_ids": inputs_dict["input_ids"],
-            "attention_mask": inputs_dict["mask"],
-            "labels": inputs_dict["labels"],
-        },
-        getter=getter,
-        setter=setter,
-        q_z_loc=all_q_z_loc[0].unsqueeze(0).to(device),
-        q_z_scale=all_q_z_scale[0].unsqueeze(0).to(device),
-        loss_fn=lambda outputs, hidden_states, inputs_dict: outputs[0],
-        loss_kl_fn=lambda kl, inputs_dict: (kl * inputs_dict["attention_mask"])
-        .mean(-1)
-        .mean(-1),
-        hidden_state_idx=hidden_state_idx,
-        steps=10,
-        lr=1e-1,
-        la=10,
-    )
-    return attributions
+        self.loader = self.model.test_dataloader() if split == 'test' else self.model.val_dataloader()
+        self.text_dataset = self.model.test_dataset_orig if split == 'test' else self.model.val_dataset_orig
+        self.dataset = self.model.test_dataset if split == 'test' else self.model.val_dataset
+        self.attributions = None
 
-
-def get_all_attributions(model, getter, setter, all_q_z_loc, all_q_z_scale, device, inputs_dict, num_layers=14, return_mean=False):
-    attributions = torch.cat([get_layer_attributions(model, getter, setter, all_q_z_loc, all_q_z_scale, device, inputs_dict, i) for i in range(num_layers)], 0).T  # T, L
-    if return_mean:
-        attributions = torch.mean(attributions, dim=-1)
-    attributions = attributions[:inputs_dict["mask"].sum(-1).item()].cpu()
-    return attributions
-
-
-def make_predictions(model, getter, setter, all_q_z_loc, all_q_z_scale, device, input_data, eval_data, num_layers=14, layer_idx=7):
-    predictions = []
-    max_attributions = []
-    for i, item in enumerate(input_data):
-        if layer_idx == -1:
-            attributions = get_all_attributions(model, getter, setter, all_q_z_loc, all_q_z_scale, device, item, num_layers=num_layers, return_mean=True)
-        else:
-            attributions = get_layer_attributions(model, getter, setter, all_q_z_loc, all_q_z_scale, device, item, layer_idx)
-        attributions = attributions[:item["mask"].sum(-1).item()].cpu()
-        error_index, max_word_attributions = find_word_with_max_attribution(
-            eval_data[i]['tokens'], attributions.squeeze(), eval_data[i]['words'])
-        predictions.append(error_index)
-        max_attributions.append(max_word_attributions)
-    return predictions, max_attributions
-
-
-def make_input_data(model, device, use_test=False):
-    dataset = model.test_dataset if use_test else model.val_dataset
-    dataset_orig = model.test_dataset_orig if use_test else model.val_dataset_orig
-    input_data = []
-    eval_data = []
-    for i in range(len(dataset)):
-        input_ids, mask, _, label = [v.to(device) for v in dataset[i]]
-        if label.squeeze() == 1:
+    def attribution_schulz(self):
+        all_q_z_loc, all_q_z_scale = roberta_hidden_states_statistics(self.model)
+        result = []
+        for batch_idx, sample in enumerate(self.loader):
+            input_ids, mask, _, labels = sample
             inputs_dict = {
-                'input_ids': input_ids.unsqueeze(0),
-                'mask': mask.unsqueeze(0),
-                'labels': label.unsqueeze(0)
+                'input_ids': input_ids.to(self.device),
+                'attention_mask': mask.to(self.device),
+                'labels': labels.to(self.device),
             }
-            input_data.append(inputs_dict)
-            eval_data.append({
-                'tokens': model.tokenizer.convert_ids_to_tokens(
-                    inputs_dict["input_ids"].squeeze()[:inputs_dict["mask"].sum(-1).item()].squeeze()),
-                'source': dataset_orig[i][0].split(),
-                'words': dataset_orig[i][1].split(),
-                'word_labels': dataset_orig[i][3],
-                'sent_label': label.unsqueeze(0),
-            })
-    return input_data, eval_data
+            all_attributions = []
+            for layer_idx in self.layer_indexes:
+                layer_attributions = schulz_explainer(
+                    self.model.net,
+                    inputs_dict=inputs_dict,
+                    getter=self.getter,
+                    setter=self.setter,
+                    q_z_loc=all_q_z_loc[0].unsqueeze(0).to(self.device),
+                    q_z_scale=all_q_z_scale[0].unsqueeze(0).to(self.device),
+                    loss_fn=lambda outputs, hidden_states, inputs_dict: outputs[0],
+                    loss_kl_fn=lambda kl, inputs_dict: (kl * inputs_dict["attention_mask"])
+                        .mean(-1)
+                        .mean(-1),
+                    hidden_state_idx=layer_idx,
+                    steps=10,
+                    lr=1e-1,
+                    la=10,
+                )
+                all_attributions.append(layer_attributions.unsqueeze(-1))
+            all_attributions = torch.cat(all_attributions, -1)  # B, T, L
+            for bidx in range(all_attributions.shape[0]):
+                try:
+                    result.append(all_attributions[bidx, :, :])  # T, L
+                except IndexError:
+                    break
+        self.attributions = result
 
+    def select_target_data(self, layer_id):
+        assert layer_id in self.layer_indexes
+        layer_id = self.layer_indexes.index(layer_id)
+        res = []
+        for sentid in range(len(self.attributions)):
+            src = self.text_dataset[sentid][0].split()
+            target_words = self.text_dataset[sentid][1].split()
+            input_ids, mask, _, labels = self.dataset[sentid]
+            tokens = self.model.tokenizer.convert_ids_to_tokens(input_ids.squeeze()[:mask.sum(-1).item()].squeeze())
+            token_attributions = self.attributions[sentid][:mask.sum(-1).item()].cpu()
+            tgt_start_idx = tokens.index('</s>') + 2
+            target_tokens = tokens[tgt_start_idx:]
+            target_token_attributions_all = token_attributions[tgt_start_idx:, :]
+            if layer_id == -1:
+                target_token_attributions = torch.mean(target_token_attributions_all, dim=-1)
+            else:
+                target_token_attributions = target_token_attributions_all[:, layer_id]
+            target_word_attributions = self._find_word_with_max_attribution(target_tokens, target_token_attributions, target_words)
+            item = {
+                'source': src,
+                'target_words': target_words,
+                'target_tokens': target_tokens,
+                'target_word_attributions': target_word_attributions,
+                'target_token_attributions_all_layers': target_token_attributions_all,
+                'target_token_attributions': target_token_attributions.squeeze(),
+                'word_labels': self.text_dataset[sentid][3],
+                'sent_label': labels.item(),
+            }
+            res.append(item)
+        return res
 
-def top1_accuracy(eval_data, predictions, attributions):
-    # eval_data: List[Dict]
-    # predictions: List[List]
-    # for each sentence a list of N indexes with highest attribution score
-    # attributions: List[Dict]
-    # for each sentences a dict with word indices as keys and max attributions score for the given word as values
-    total_by_sent = 0
-    correct_by_sent = 0
-    for i in range(len(eval_data)):
-        try:
-            assert len(eval_data[i]['word_labels']) == len(attributions[i])
-        except AssertionError:
-            print('Sequence too long. Skipping')
-            continue
-        gold_error_indices = set([idx for idx, val in enumerate(eval_data[i]['word_labels']) if val == 1])
-        if any([idx in gold_error_indices for idx in predictions[i]]):
-            correct_by_sent += 1
-        total_by_sent += 1
+    @staticmethod
+    def top1_accuracy(data, ignore=True, topk=3):
+        # data: output of self.select_target()
+        total_by_sent = 0
+        correct_by_sent = 0
+        for item in data:
+            if ignore and item['sent_label'] != 1:
+                continue
+            try:
+                assert len(item['word_labels']) == len(item['target_word_attributions'])
+            except AssertionError:
+                print('Sequence too long. Skipping')
+                continue
+            gold = set([idx for idx, val in enumerate(item['word_labels']) if val == 1])
+            predictions = np.argsort(item['target_word_attributions'])[::-1]
+            predictions = predictions[:topk]
+            if any([idx in gold for idx in predictions]):
+                correct_by_sent += 1
+            total_by_sent += 1
+        print(correct_by_sent)
+        print(total_by_sent)
+        print('{:.3f}'.format(correct_by_sent / total_by_sent))
 
-    print(correct_by_sent)
-    print(total_by_sent)
-    print('{:.3f}'.format(correct_by_sent / total_by_sent))
+    @staticmethod
+    def auc_score(data, ignore=True):
+        ys = []
+        yhats = []
+        for item in data:
+            if ignore and item['sent_label'] != 1:
+                continue
+            try:
+                assert len(item['word_labels']) == len(item['target_word_attributions'])
+            except AssertionError:
+                print('Sequence too long. Skipping')
+                continue
+            for idx, val in enumerate(item['word_labels']):
+                ys.append(val)
+                yhats.append(item['target_word_attributions'][idx])
+        fpr, tpr, _ = roc_curve(ys, yhats)
+        score = roc_auc_score(ys, yhats)
+        pyplot.plot(fpr, tpr)
+        pyplot.show()
+        print(score)
 
-
-def auc_score(eval_data, attributions):
-    ys = []
-    yhats = []
-    for i in range(len(eval_data)):
-        try:
-            assert len(eval_data[i]['word_labels']) == len(attributions[i])
-        except AssertionError:
-            print('Sequence too long. Skipping')
-            continue
-        for idx, val in enumerate(eval_data[i]['word_labels']):
-            ys.append(val)
-            yhats.append(attributions[i][idx])
-
-    fpr, tpr, _ = roc_curve(ys, yhats)
-    score = roc_auc_score(ys, yhats)
-    pyplot.plot(fpr, tpr)
-    pyplot.show()
-    print(score)
+    @staticmethod
+    def _find_word_with_max_attribution(target_tokens, target_attributions, words):
+        char_to_word = {}
+        char_count = 0
+        for i, w in enumerate(words):
+            for _ in w:
+                char_to_word[char_count] = i
+                char_count += 1
+        char_count = 0
+        word_attr = dict()
+        curr_word = None
+        curr_max = 0
+        assert len(target_attributions) == len(target_tokens)
+        for tok, attr in zip(target_tokens, target_attributions):
+            if tok == '<s>' or tok == '</s>':
+                continue
+            for _ in tok.lstrip('▁'):
+                if curr_word is None:
+                    curr_word = char_to_word[char_count]
+                if curr_word != char_to_word[char_count]:
+                    word_attr[curr_word] = curr_max * -1
+                    curr_word = char_to_word[char_count]
+                    curr_max = 0
+                if attr * -1 < curr_max:
+                    curr_max = attr * -1
+                char_count += 1
+        word_attr[curr_word] = curr_max * -1
+        return [word_attr[idx].item() for idx in range(len(word_attr))]

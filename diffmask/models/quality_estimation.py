@@ -113,6 +113,11 @@ class QualityEstimation(pl.LightningModule):
             self.val_dataset, batch_size=self.hparams.batch_size
         )
 
+    def test_dataloader(self):
+        return torch.utils.data.DataLoader(
+            self.test_dataset, batch_size=self.hparams.batch_size
+        )
+
     def training_step(self, batch, batch_idx=None):
         input_ids, mask, _, labels = batch
 

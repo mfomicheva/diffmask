@@ -2,6 +2,7 @@ import math
 import torch
 import colorsys
 from sty import bg
+import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib import lines
 
@@ -39,7 +40,7 @@ def print_attributions(tokens, attributions, labels=None, special=True):
                 ]
             )
         )
-    _print(tokens, attributions / attributions.max())
+    _print(tokens, np.asarray(attributions) / max(attributions))
     if labels is not None:
         _print(tokens, labels)
 
