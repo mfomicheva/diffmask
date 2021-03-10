@@ -37,7 +37,7 @@ def find_word_with_max_attribution(tokens, attributions, words, N=3):
                 curr_max = attr * -1
             char_count += 1
     heapq.heappush(max_attr_h, (curr_max, curr_word))
-    word_attr_d[curr_word] = curr_max
+    word_attr_d[curr_word] = curr_max * -1
     return [t[1] for t in max_attr_h[:N]], word_attr_d
 
 
