@@ -92,7 +92,7 @@ class AttributionsQE:
         return res
 
     @staticmethod
-    def top1_accuracy(data, ignore=True, topk=3):
+    def top1_accuracy(data, ignore=True, topk=1, silent=False):
         # data: output of self.select_target()
         total_by_sent = 0
         correct_by_sent = 0
@@ -102,7 +102,8 @@ class AttributionsQE:
             try:
                 assert len(item['word_labels']) == len(item['target_word_attributions'])
             except AssertionError:
-                print('Sequence too long. Skipping')
+                if not silent:
+                    print('Sequence too long. Skipping')
                 continue
             gold = set([idx for idx, val in enumerate(item['word_labels']) if val == 1])
             predictions = np.argsort(item['target_word_attributions'])[::-1]
@@ -115,7 +116,7 @@ class AttributionsQE:
         print('{:.3f}'.format(correct_by_sent / total_by_sent))
 
     @staticmethod
-    def auc_score(data, ignore=True):
+    def auc_score(data, ignore=True, silent=False):
         ys = []
         yhats = []
         for item in data:
@@ -124,7 +125,8 @@ class AttributionsQE:
             try:
                 assert len(item['word_labels']) == len(item['target_word_attributions'])
             except AssertionError:
-                print('Sequence too long. Skipping')
+                if not silent:
+                    print('Sequence too long. Skipping')
                 continue
             for idx, val in enumerate(item['word_labels']):
                 ys.append(val)
