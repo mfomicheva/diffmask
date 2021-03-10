@@ -63,7 +63,7 @@ class AttributionsQE:
     def select_target_data(self, layer_id):
         if layer_id != -1:
             assert layer_id in self.layer_indexes
-        layer_id = self.layer_indexes.index(layer_id)
+            layer_id = self.layer_indexes.index(layer_id)
         res = []
         for sentid in range(len(self.attributions)):
             src = self.text_dataset[sentid][0].split()
