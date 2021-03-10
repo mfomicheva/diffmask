@@ -61,7 +61,8 @@ class AttributionsQE:
         self.attributions = result
 
     def select_target_data(self, layer_id):
-        assert layer_id in self.layer_indexes
+        if layer_id != -1:
+            assert layer_id in self.layer_indexes
         layer_id = self.layer_indexes.index(layer_id)
         res = []
         for sentid in range(len(self.attributions)):
