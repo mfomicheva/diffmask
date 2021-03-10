@@ -22,7 +22,7 @@ def _get_color(attr):
     ]
 
 
-def print_attributions(tokens, attributions, special=True):
+def print_attributions(tokens, attributions, labels=None, special=True):
 
     if not special:
         attributions = torch.tensor(
@@ -30,14 +30,18 @@ def print_attributions(tokens, attributions, special=True):
         )
         tokens = [e for e in tokens if e not in ("[CLS]", "[SEP]")]
 
-    print(
-        " ".join(
-            [
-                bg(*_get_color(a)) + w + bg.rs
-                for w, a in zip(tokens, attributions / attributions.max())
-            ]
+    def _print(text, values):
+        print(
+            " ".join(
+                [
+                    bg(*_get_color(a)) + w + bg.rs
+                    for w, a in zip(text, values)
+                ]
+            )
         )
-    )
+    _print(tokens, attributions / attributions.max())
+    if labels is not None:
+        _print(tokens, labels)
 
 
 def plot_sst_attributions(attributions, tokens, num_layers=14, name=None, save=False):
