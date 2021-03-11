@@ -136,9 +136,9 @@ class AttributionsQE:
                     print('Sequence too long. Skipping')
                 continue
             gold = set([idx for idx, val in enumerate(item['word_labels']) if val == 1])
-            predictions = np.argsort(item['target_word_attributions'])[::-1]
-            predictions = predictions[:topk]
-            if any([idx in gold for idx in predictions]):
+            highest_attributions = np.argsort(item['target_word_attributions'])[::-1]
+            highest_attributions = highest_attributions[:topk]
+            if any([idx in gold for idx in highest_attributions]):
                 correct_by_sent += 1
             total_by_sent += 1
         print(correct_by_sent)
