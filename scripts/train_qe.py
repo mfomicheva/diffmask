@@ -1,20 +1,13 @@
 import os
 import argparse
-import torch
 import pytorch_lightning as pl
 
 from diffmask.models.quality_estimation import QualityEstimationClassification
 
-from diffmask.utils.callbacks import CallbackQE
-
-from diffmask.utils.plot import plot_sst_attributions, print_attributions
-
-from sklearn.metrics import roc_curve, roc_auc_score
-from matplotlib import pyplot
-
 
 if __name__ == '__main__':
     mlqe_parser = argparse.ArgumentParser()
+    mlqe_parser.add_argument("--gpu", type=str, default="0")
     mlqe_parser.add_argument("--model", type=str, default="xlm-roberta-base")
     mlqe_parser.add_argument("--src_train_filename", type=str, default="./datasets/qe/mlqe-multilingual/train.all.src")
     mlqe_parser.add_argument("--tgt_train_filename", type=str, default="./datasets/qe/mlqe-multilingual/train.all.mt")
@@ -36,6 +29,7 @@ if __name__ == '__main__':
 
     parser = mlqe_parser
     hparams, _ = parser.parse_known_args()
+    os.environ["CUDA_VISIBLE_DEVICES"] = hparams.gpu
 
     checkpoint_callback = pl.callbacks.ModelCheckpoint(
         filepath=hparams.model_path,
