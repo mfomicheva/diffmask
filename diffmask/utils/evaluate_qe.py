@@ -5,16 +5,16 @@ from sklearn.metrics import roc_curve, roc_auc_score
 from matplotlib import pyplot
 
 from diffmask.attributions.schulz import schulz_explainer, roberta_hidden_states_statistics
+from diffmask.utils.util import accuracy_precision_recall_f1
 
 
 class AttributionsQE:
 
-    def __init__(self, model, getter, setter, layer_indexes, device, use_mean=False, split='valid'):
+    def __init__(self, model, getter, setter, layer_indexes, device, split='valid'):
         self.model = model
         self.getter = getter
         self.setter = setter
         self.layer_indexes = layer_indexes
-        self.use_mean = use_mean
         self.split = split
         self.device = device
 
@@ -92,13 +92,42 @@ class AttributionsQE:
             res.append(item)
         return res
 
+    def generate_predictions(self, evaluate=False):
+        all_predictions = []
+        all_labels = []
+        for batch_idx, sample in enumerate(self.loader):
+            input_ids, mask, _, labels = sample
+            inputs_dict = {
+                'input_ids': input_ids.to(self.device),
+                'mask': mask.to(self.device),
+                'labels': labels.to(self.device),
+            }
+            logits = self.model(**inputs_dict)[0]
+            all_predictions.append(logits.argmax(-1))
+            all_labels.append(labels)
+
+        all_predictions = torch.cat(all_predictions, dim=0).to(self.device)
+        all_labels = torch.cat(all_labels, dim=0).to(self.device)
+
+        if evaluate:
+            accuracy, precision, recall, f1 = accuracy_precision_recall_f1(all_predictions, all_labels, average=False)
+            print((accuracy, precision[1], recall[1], f1[1]))  # do not average, print for class=1
+            print(sum(all_predictions.tolist()) / len(all_predictions.tolist()))
+            print(sum(all_labels.tolist()) / len(all_labels.tolist()))
+        return all_predictions.tolist()
+
     @staticmethod
-    def top1_accuracy(data, ignore=True, topk=1, silent=False):
+    def top1_accuracy(data, topk=1, silent=False, predictions=None, ignore_correct_gold=True, ignore_correct_predicted=True,):
         # data: output of self.select_target()
         total_by_sent = 0
         correct_by_sent = 0
-        for item in data:
-            if ignore and item['sent_label'] != 1:
+        if ignore_correct_predicted:
+            assert predictions is not None
+            assert len(predictions) == len(data)
+        for i, item in enumerate(data):
+            if ignore_correct_gold and item['sent_label'] != 1:
+                continue
+            if ignore_correct_predicted and predictions[i] != 1:
                 continue
             try:
                 assert len(item['word_labels']) == len(item['target_word_attributions'])
@@ -117,11 +146,16 @@ class AttributionsQE:
         print('{:.3f}'.format(correct_by_sent / total_by_sent))
 
     @staticmethod
-    def auc_score(data, ignore=True, silent=False):
+    def auc_score(data, silent=False, predictions=None, ignore_correct_gold=True, ignore_correct_predicted=True,):
         ys = []
         yhats = []
-        for item in data:
-            if ignore and item['sent_label'] != 1:
+        if ignore_correct_predicted:
+            assert predictions is not None
+            assert len(predictions) == len(data)
+        for i, item in enumerate(data):
+            if ignore_correct_gold and item['sent_label'] != 1:
+                continue
+            if ignore_correct_predicted and predictions[i] != 1:
                 continue
             try:
                 assert len(item['word_labels']) == len(item['target_word_attributions'])
