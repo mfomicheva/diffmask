@@ -147,6 +147,9 @@ class QualityEstimation(pl.LightningModule):
     def validation_step(self, batch, batch_idx=None):
         return self.training_step(batch, batch_idx)
 
+    def test_step(self, batch, batch_idx=None):
+        return self.training_step(batch, batch_idx)
+
     def validation_epoch_end(self, outputs):
 
         outputs_dict = {
