@@ -84,6 +84,7 @@ class AttributionsQE:
                 'target_words': target_words,
                 'target_tokens': target_tokens,
                 'target_word_attributions': target_word_attributions,
+                'target_word_attributions_random': torch.rand((len(target_word_attributions),)).tolist(),
                 'target_token_attributions_all_layers': target_token_attributions_all,
                 'target_token_attributions': target_token_attributions.squeeze(),
                 'word_labels': self.text_dataset[sentid][3],
@@ -117,7 +118,10 @@ class AttributionsQE:
         return all_predictions.tolist()
 
     @staticmethod
-    def top1_accuracy(data, topk=1, silent=False, predictions=None, ignore_correct_gold=True, ignore_correct_predicted=True,):
+    def top1_accuracy(
+            data, topk=1, silent=False, predictions=None, ignore_correct_gold=True, ignore_correct_predicted=True,
+            random=False,
+    ):
         # data: output of self.select_target()
         total_by_sent = 0
         correct_by_sent = 0
@@ -136,7 +140,8 @@ class AttributionsQE:
                     print('Sequence too long. Skipping')
                 continue
             gold = set([idx for idx, val in enumerate(item['word_labels']) if val == 1])
-            highest_attributions = np.argsort(item['target_word_attributions'])[::-1]
+            attributions = item['target_word_attributions_random'] if random else item['target_word_attributions']
+            highest_attributions = np.argsort(attributions)[::-1]
             highest_attributions = highest_attributions[:topk]
             if any([idx in gold for idx in highest_attributions]):
                 correct_by_sent += 1
@@ -146,7 +151,10 @@ class AttributionsQE:
         print('{:.3f}'.format(correct_by_sent / total_by_sent))
 
     @staticmethod
-    def auc_score(data, silent=False, predictions=None, ignore_correct_gold=True, ignore_correct_predicted=True,):
+    def auc_score(
+            data, silent=False, predictions=None, ignore_correct_gold=True, ignore_correct_predicted=True,
+            random=False
+    ):
         ys = []
         yhats = []
         if ignore_correct_predicted:
@@ -163,9 +171,10 @@ class AttributionsQE:
                 if not silent:
                     print('Sequence too long. Skipping')
                 continue
+            attributions = item['target_word_attributions_random'] if random else item['target_word_attributions']
             for idx, val in enumerate(item['word_labels']):
                 ys.append(val)
-                yhats.append(item['target_word_attributions'][idx])
+                yhats.append(attributions[idx])
         fpr, tpr, _ = roc_curve(ys, yhats)
         score = roc_auc_score(ys, yhats)
         pyplot.plot(fpr, tpr)
