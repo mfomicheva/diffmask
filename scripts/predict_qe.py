@@ -17,7 +17,7 @@ if __name__ == '__main__':
     parser.add_argument("--seed", type=float, default=0)
     parser.add_argument("--model_path", type=str)
 
-    hparams, _ = parser.parse_args()
+    hparams = parser.parse_args()
     os.environ["CUDA_VISIBLE_DEVICES"] = hparams.gpu
     device = "cuda:{}".format(hparams.gpu)
 

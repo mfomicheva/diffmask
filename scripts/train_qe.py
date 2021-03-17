@@ -23,7 +23,7 @@ if __name__ == '__main__':
     parser.add_argument("--learning_rate", type=float, default=3e-5)
     parser.add_argument("--epochs", type=int, default=10)
 
-    hparams, _ = parser.parse_args()
+    hparams = parser.parse_args()
     os.environ["CUDA_VISIBLE_DEVICES"] = hparams.gpu
 
     checkpoint_callback = pl.callbacks.ModelCheckpoint(
