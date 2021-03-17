@@ -94,28 +94,7 @@ class AttributionsQE:
         return res
 
     def generate_predictions(self, evaluate=False):
-        all_predictions = []
-        all_labels = []
-        for batch_idx, sample in enumerate(self.loader):
-            input_ids, mask, _, labels = sample
-            inputs_dict = {
-                'input_ids': input_ids.to(self.device),
-                'mask': mask.to(self.device),
-                'labels': labels.to(self.device),
-            }
-            logits = self.model(**inputs_dict)[0]
-            all_predictions.append(logits.argmax(-1))
-            all_labels.append(labels)
-
-        all_predictions = torch.cat(all_predictions, dim=0).to(self.device)
-        all_labels = torch.cat(all_labels, dim=0).to(self.device)
-
-        if evaluate:
-            accuracy, precision, recall, f1 = accuracy_precision_recall_f1(all_predictions, all_labels, average=False)
-            print((accuracy, precision[1], recall[1], f1[1]))  # do not average, print for class=1
-            print(sum(all_predictions.tolist()) / len(all_predictions.tolist()))
-            print(sum(all_labels.tolist()) / len(all_labels.tolist()))
-        return all_predictions.tolist()
+        return generate_predictions(self.model, self.loader, self.device, evaluate=evaluate)
 
     @staticmethod
     def top1_accuracy(
@@ -209,3 +188,28 @@ class AttributionsQE:
                 char_count += 1
         word_attr[curr_word] = curr_max * -1
         return [word_attr[idx].item() for idx in range(len(word_attr))]
+
+
+def generate_predictions(model, loader, device, evaluate=False):
+    all_predictions = []
+    all_labels = []
+    for batch_idx, sample in enumerate(loader):
+        input_ids, mask, _, labels = sample
+        inputs_dict = {
+            'input_ids': input_ids.to(device),
+            'mask': mask.to(device),
+            'labels': labels.to(device),
+        }
+        logits = model(**inputs_dict)[0]
+        all_predictions.append(logits.argmax(-1))
+        all_labels.append(labels)
+
+    all_predictions = torch.cat(all_predictions, dim=0).to(device)
+    all_labels = torch.cat(all_labels, dim=0).to(device)
+
+    if evaluate:
+        accuracy, precision, recall, f1 = accuracy_precision_recall_f1(all_predictions, all_labels, average=False)
+        print((accuracy, precision[1], recall[1], f1[1]))  # do not average, print for class=1
+        print(sum(all_predictions.tolist()) / len(all_predictions.tolist()))
+        print(sum(all_labels.tolist()) / len(all_labels.tolist()))
+    return all_predictions.tolist()

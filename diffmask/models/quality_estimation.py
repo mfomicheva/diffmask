@@ -85,18 +85,24 @@ class QualityEstimation(pl.LightningModule):
         super().__init__()
         self.hparams = hparams
         self.tokenizer = XLMRobertaTokenizer.from_pretrained(self.hparams.model)
-
-    def prepare_data(self):
-        self.train_dataset, self.train_dataset_orig = load_sent_level(
-            self.hparams.src_train_filename, self.hparams.tgt_train_filename, self.hparams.labels_train_filename,
-            self.tokenizer, path_word_labels=self.hparams.word_labels_train_filename,
-        )
-        self.val_dataset, self.val_dataset_orig = load_sent_level(
-            self.hparams.src_val_filename, self.hparams.tgt_val_filename, self.hparams.labels_val_filename,
-            self.tokenizer, path_word_labels=self.hparams.word_labels_val_filename
-        )
+        self.train_dataset = None
+        self.train_dataset_orig = None
+        self.val_dataset = None
+        self.val_dataset_orig = None
         self.test_dataset = None
         self.test_dataset_orig = None
+
+    def prepare_data(self):
+        if self.hparams.src_train_filename is not None:
+            self.train_dataset, self.train_dataset_orig = load_sent_level(
+                self.hparams.src_train_filename, self.hparams.tgt_train_filename, self.hparams.labels_train_filename,
+                self.tokenizer, path_word_labels=self.hparams.word_labels_train_filename,
+            )
+        if self.hparams.src_val_filename is not None:
+            self.val_dataset, self.val_dataset_orig = load_sent_level(
+                self.hparams.src_val_filename, self.hparams.tgt_val_filename, self.hparams.labels_val_filename,
+                self.tokenizer, path_word_labels=self.hparams.word_labels_val_filename
+            )
         if self.hparams.src_test_filename is not None:
             self.test_dataset, self.test_dataset_orig = load_sent_level(
                 self.hparams.src_test_filename, self.hparams.tgt_test_filename, self.hparams.labels_test_filename,
