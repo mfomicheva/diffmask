@@ -32,5 +32,7 @@ if __name__ == '__main__':
 
     qe = QualityEstimationClassification.load_from_checkpoint(hparams.model_path).to(device)
     qe.hparams = hparams
+    qe.freeze()
+    qe.prepare_data()
     loader = qe.test_dataloader()
     predictions = generate_predictions(qe, loader, device, evaluate=True)
