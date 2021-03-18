@@ -117,7 +117,10 @@ class QualityEstimation(pl.LightningModule):
         class_sample_count = torch.bincount(labels_tensor)
         print(class_sample_count)
         weights = 1. / class_sample_count.to(torch.double)
-        sampler = WeightedRandomSampler(weights, len(weights))
+        instance_weights = []
+        for l in labels:
+            instance_weights.append(weights[l])
+        sampler = WeightedRandomSampler(instance_weights, len(instance_weights))
         return sampler
 
     def train_dataloader(self):
