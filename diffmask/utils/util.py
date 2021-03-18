@@ -44,3 +44,15 @@ def accuracy_precision_recall_f1(y_pred, y_true, average=True):
         if average
         else (precision, recall, f1)
     )
+
+
+def matthews_corr_coef(y_pred, y_true):
+    M = confusion_matrix(y_pred, y_true)
+    assert sum(M.shape) == 4  # This is for binary classification only
+    tn, fp, fn, tp = M.view(M.numel())
+    numerator = (tp * tn) - (fp * fn)
+    denominator = torch.sqrt(((tp + fp) * (tp + fn) * (tn + fp) * (tn + fn)))
+    if denominator == 0:
+        return 0
+    else:
+        return numerator / denominator

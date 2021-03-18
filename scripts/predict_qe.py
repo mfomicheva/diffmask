@@ -25,6 +25,8 @@ if __name__ == '__main__':
     parser.add_argument("--batch_size", type=int, default=32)
     parser.add_argument("--seed", type=float, default=0)
     parser.add_argument("--model_path", type=str)
+    parser.add_argument("--class_weighting", default=False, action='store_true')
+    parser.add_argument("--val_loss", default="f1", choices=["f1", "mcc"])
 
     hparams = parser.parse_args()
     os.environ["CUDA_VISIBLE_DEVICES"] = hparams.gpu

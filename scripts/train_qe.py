@@ -26,6 +26,8 @@ if __name__ == '__main__':
     parser.add_argument("--model_path", type=str)
     parser.add_argument("--learning_rate", type=float, default=3e-5)
     parser.add_argument("--epochs", type=int, default=10)
+    parser.add_argument("--class_weighting", default=False, action='store_true')
+    parser.add_argument("--val_loss", default="f1", choices=["f1", "mcc"])
 
     hparams = parser.parse_args()
     os.environ["CUDA_VISIBLE_DEVICES"] = hparams.gpu

@@ -1,5 +1,7 @@
 import torch
+from torch.utils.data import WeightedRandomSampler
 import pytorch_lightning as pl
+
 from transformers import (
     XLMRobertaTokenizer,
     XLMRobertaForSequenceClassification,
@@ -7,7 +9,7 @@ from transformers import (
     get_constant_schedule_with_warmup,
 )
 
-from ..utils.util import accuracy_precision_recall_f1
+from ..utils.util import accuracy_precision_recall_f1, matthews_corr_coef
 
 
 def _truncate_seq_pair(tokens_a, tokens_b, max_length):
@@ -109,9 +111,18 @@ class QualityEstimation(pl.LightningModule):
                 self.tokenizer, path_word_labels=self.hparams.word_labels_test_filename
             )
 
+    def make_sampler(self):
+        labels = [t[-1] for t in self.train_dataset]
+        labels_tensor = torch.LongTensor(labels)
+        class_sample_count = torch.bincount(labels_tensor)
+        weights = 1. / class_sample_count.to(torch.double)
+        sampler = WeightedRandomSampler(weights, len(weights))
+        return sampler
+
     def train_dataloader(self):
+        sampler = self.make_sampler() if self.hparams.class_weighting else None
         return torch.utils.data.DataLoader(
-            self.train_dataset, batch_size=self.hparams.batch_size, shuffle=True
+            self.train_dataset, batch_size=self.hparams.batch_size, shuffle=True, sampler=sampler,
         )
 
     def val_dataloader(self):
@@ -136,6 +147,10 @@ class QualityEstimation(pl.LightningModule):
             "f1": f1,
         }
 
+        if self.hparams.val_loss == "mcc":
+            mcc = matthews_corr_coef(logits.argmax(-1), labels)
+            outputs_dict.update({"mcc": mcc})
+
         outputs_dict = {
             "loss": loss,
             **outputs_dict,
@@ -158,12 +173,16 @@ class QualityEstimation(pl.LightningModule):
 
     def validation_epoch_end(self, outputs):
 
+        val_metrics = ["val_acc", "val_f1"]
+        if self.hparams.val_loss not in val_metrics:
+            val_metrics.append(self.hparams.val_loss)
+
         outputs_dict = {
-            k: sum(e[k] for e in outputs) / len(outputs) for k in ("val_acc", "val_f1")
+            k: sum(e[k] for e in outputs) / len(outputs) for k in val_metrics
         }
 
         outputs_dict = {
-            "val_loss": -outputs_dict["val_f1"],
+            "val_loss": -outputs_dict["val_{}".format(self.hparams.val_loss)],
             **outputs_dict,
             "log": outputs_dict,
         }
