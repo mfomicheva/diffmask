@@ -51,7 +51,7 @@ def matthews_corr_coef(y_pred, y_true):
     assert sum(M.shape) == 4  # This is for binary classification only
     tn, fp, fn, tp = M.view(M.numel())
     numerator = (tp * tn) - (fp * fn)
-    denominator = torch.sqrt(((tp + fp) * (tp + fn) * (tn + fp) * (tn + fn)))
+    denominator = torch.sqrt(((tp + fp) * (tp + fn) * (tn + fp) * (tn + fn)).to(torch.double))
     if denominator == 0:
         return 0
     else:

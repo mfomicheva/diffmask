@@ -2,7 +2,7 @@ import os
 import argparse
 import pytorch_lightning as pl
 
-from diffmask.models.quality_estimation import QualityEstimationClassification
+from diffmask.models.quality_estimation import QualityEstimationBinaryClassification
 
 
 if __name__ == '__main__':
@@ -40,7 +40,7 @@ if __name__ == '__main__':
     )
 
     assert not os.path.exists(hparams.model_path)
-    qe = QualityEstimationClassification(hparams)
+    qe = QualityEstimationBinaryClassification(hparams)
     trainer = pl.Trainer(
         gpus=int(hparams.gpu != ""),
         progress_bar_refresh_rate=0,

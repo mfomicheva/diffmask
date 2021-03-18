@@ -121,8 +121,9 @@ class QualityEstimation(pl.LightningModule):
 
     def train_dataloader(self):
         sampler = self.make_sampler() if self.hparams.class_weighting else None
+        shuffle = False if sampler else True
         return torch.utils.data.DataLoader(
-            self.train_dataset, batch_size=self.hparams.batch_size, shuffle=True, sampler=sampler,
+            self.train_dataset, batch_size=self.hparams.batch_size, shuffle=shuffle, sampler=sampler,
         )
 
     def val_dataloader(self):
@@ -181,6 +182,8 @@ class QualityEstimation(pl.LightningModule):
             k: sum(e[k] for e in outputs) / len(outputs) for k in val_metrics
         }
 
+        val_metrics.append("val_{}".format(self.hparams.val_loss))
+
         outputs_dict = {
             "val_loss": -outputs_dict["val_{}".format(self.hparams.val_loss)],
             **outputs_dict,
@@ -203,13 +206,13 @@ class QualityEstimation(pl.LightningModule):
         return optimizers, schedulers
 
 
-class QualityEstimationClassification(QualityEstimation):
+class QualityEstimationBinaryClassification(QualityEstimation):
 
     def __init__(self, hparams):
         super().__init__(hparams)
 
         config = XLMRobertaConfig.from_pretrained(self.hparams.model)
-        config.num_labels = 5
+        config.num_labels = 2
         self.net = XLMRobertaForSequenceClassification.from_pretrained(self.hparams.model, config=config)
 
     def forward(self, input_ids, mask, labels=None):

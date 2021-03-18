@@ -2,7 +2,7 @@ import os
 import argparse
 import pytorch_lightning as pl
 
-from diffmask.models.quality_estimation import QualityEstimationClassification
+from diffmask.models.quality_estimation import QualityEstimationBinaryClassification
 from diffmask.utils.evaluate_qe import generate_predictions
 
 
@@ -32,7 +32,7 @@ if __name__ == '__main__':
     os.environ["CUDA_VISIBLE_DEVICES"] = hparams.gpu
     device = "cuda:{}".format(hparams.gpu)
 
-    qe = QualityEstimationClassification.load_from_checkpoint(hparams.model_path).to(device)
+    qe = QualityEstimationBinaryClassification.load_from_checkpoint(hparams.model_path).to(device)
     qe.hparams = hparams
     qe.freeze()
     qe.prepare_data()
