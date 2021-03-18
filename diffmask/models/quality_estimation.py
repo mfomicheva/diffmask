@@ -177,13 +177,11 @@ class QualityEstimation(pl.LightningModule):
 
         val_metrics = ["val_acc", "val_f1"]
         if self.hparams.val_loss not in val_metrics:
-            val_metrics.append(self.hparams.val_loss)
+            val_metrics.append("val_{}".format(self.hparams.val_loss))
 
         outputs_dict = {
             k: sum(e[k] for e in outputs) / len(outputs) for k in val_metrics
         }
-
-        val_metrics.append("val_{}".format(self.hparams.val_loss))
 
         outputs_dict = {
             "val_loss": -outputs_dict["val_{}".format(self.hparams.val_loss)],

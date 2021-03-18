@@ -1,6 +1,5 @@
 import os
 import argparse
-import pytorch_lightning as pl
 
 from diffmask.models.quality_estimation import QualityEstimationBinaryClassification
 from diffmask.utils.evaluate_qe import generate_predictions
