@@ -5,7 +5,7 @@ from sklearn.metrics import roc_curve, roc_auc_score
 from matplotlib import pyplot
 
 from diffmask.attributions.schulz import schulz_explainer, roberta_hidden_states_statistics
-from diffmask.utils.util import accuracy_precision_recall_f1
+from diffmask.utils.util import accuracy_precision_recall_f1, matthews_corr_coef
 
 
 class AttributionsQE:
@@ -209,7 +209,9 @@ def generate_predictions(model, loader, device, evaluate=False):
 
     if evaluate:
         accuracy, precision, recall, f1 = accuracy_precision_recall_f1(all_predictions, all_labels, average=False)
+        mcc = matthews_corr_coef(all_predictions, all_labels,)
         print((accuracy, precision[1], recall[1], f1[1]))  # do not average, print for class=1
+        print(mcc)
         print(sum(all_predictions.tolist()) / len(all_predictions.tolist()))
         print(sum(all_labels.tolist()) / len(all_labels.tolist()))
     return all_predictions.tolist()
