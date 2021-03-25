@@ -146,7 +146,7 @@ class EvaluateQE:
                 continue
             sample = SampleAttributions(
                 self.text_dataset[sentid][0].split(), self.text_dataset[sentid][1].split(), bpe_tokens,
-                self.attributions[sentid], self.text_dataset[sentid][3], sent_labels.item(), sent_pred, layer_id
+                self.attributions[sentid][sentid], self.text_dataset[sentid][3], sent_labels.item(), sent_pred, layer_id
             )
             try:
                 sample.map_attributions()
