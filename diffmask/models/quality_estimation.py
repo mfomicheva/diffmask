@@ -145,16 +145,7 @@ class QualityEstimation(pl.LightningModule):
 
         logits = self.forward(input_ids, mask)[0]
         loss = torch.nn.functional.cross_entropy(logits, labels, reduction="none").mean(-1)
-        acc, _, _, f1 = accuracy_precision_recall_f1(logits.argmax(-1), labels, average=True)
-
-        outputs_dict = {
-            "acc": acc,
-            "f1": f1,
-        }
-
-        if self.hparams.val_loss == "mcc":
-            mcc = matthews_corr_coef(logits.argmax(-1), labels)
-            outputs_dict.update({"mcc": mcc})
+        outputs_dict = self.compute_metrics(logits.argmax(-1), labels, loss)
 
         outputs_dict = {
             "loss": loss,
@@ -178,10 +169,7 @@ class QualityEstimation(pl.LightningModule):
 
     def validation_epoch_end(self, outputs):
 
-        val_metrics = ["val_acc", "val_f1"]
-        if self.hparams.val_loss not in val_metrics:
-            val_metrics.append("val_{}".format(self.hparams.val_loss))
-
+        val_metrics = ["val_{}".format(m) for m in self.metrics]
         outputs_dict = {
             k: sum(e[k] for e in outputs) / len(outputs) for k in val_metrics
         }
@@ -216,6 +204,38 @@ class QualityEstimationBinaryClassification(QualityEstimation):
         config = XLMRobertaConfig.from_pretrained(self.hparams.model)
         config.num_labels = 2
         self.net = XLMRobertaForSequenceClassification.from_pretrained(self.hparams.model, config=config)
+        self.metrics = ["f1", "acc", "mcc"]
+        if self.hparams.val_loss not in self.metrics:
+            self.metrics.append(self.hparams.val_loss)
 
     def forward(self, input_ids, mask, labels=None):
         return self.net(input_ids=input_ids, attention_mask=mask)
+
+    @staticmethod
+    def compute_metrics(logits, labels):
+        acc, _, _, f1 = accuracy_precision_recall_f1(logits.argmax(-1), labels, average=True)
+        mcc = matthews_corr_coef(logits.argmax(-1), labels)
+        outputs_dict = {
+            "acc": acc,
+            "f1": f1,
+            "mcc": mcc,
+        }
+        return outputs_dict
+
+
+class QualityEstimationRegression(QualityEstimation):
+
+    def __init__(self, hparams):
+        super().__init__(hparams)
+
+        config = XLMRobertaConfig.from_pretrained(self.hparams.model)
+        config.num_labels = 1
+        self.net = XLMRobertaForSequenceClassification.from_pretrained(self.hparams.model, config=config)
+        self.metrics = ["mse"]
+
+    def forward(self, input_ids, mask, labels=None):
+        return self.net(input_ids=input_ids, attention_mask=mask)
+
+    @staticmethod
+    def compute_metrics(logits, labels, loss):
+        return {"mse": loss}

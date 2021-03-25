@@ -1,7 +1,7 @@
 import os
 import argparse
 
-from diffmask.models.quality_estimation import QualityEstimationBinaryClassification
+from diffmask.models.quality_estimation import QualityEstimationBinaryClassification, QualityEstimationRegression
 from diffmask.utils.evaluate_qe import generate_predictions
 
 
@@ -26,12 +26,20 @@ if __name__ == '__main__':
     parser.add_argument("--model_path", type=str)
     parser.add_argument("--class_weighting", default=False, action='store_true')
     parser.add_argument("--val_loss", default="f1", choices=["f1", "mcc"])
+    parser.add_argument("--num_labels", default=2, type=int)
 
     hparams = parser.parse_args()
     os.environ["CUDA_VISIBLE_DEVICES"] = hparams.gpu
     device = "cuda:{}".format(hparams.gpu)
 
-    qe = QualityEstimationBinaryClassification.load_from_checkpoint(hparams.model_path).to(device)
+    if hparams.num_labels == 1:
+        qe = QualityEstimationRegression
+    elif hparams.num_labels == 2:
+        qe = QualityEstimationBinaryClassification
+    else:
+        raise NotImplementedError
+
+    qe = qe.load_from_checkpoint(hparams.model_path).to(device)
     qe.hparams = hparams
     qe.freeze()
     qe.prepare_data()

@@ -38,8 +38,8 @@ class SampleAttributions:
 
     def map_attributions(self):
         try:
-            src_bpe_moses, src_moses_bpe = map_bpe_moses(self._source_bpe_tokens(), self.source_tokens)
-            tgt_bpe_moses, tgt_moses_bpe = map_bpe_moses(self._target_bpe_tokens(), self.target_tokens)
+            src_bpe_moses, src_moses_bpe = map_bpe_moses(self.source_bpe_tokens(), self.source_tokens)
+            tgt_bpe_moses, tgt_moses_bpe = map_bpe_moses(self.target_bpe_tokens(), self.target_tokens)
         except ValueError:
             raise
         self.set_layer_bpe_attributions()
@@ -56,10 +56,10 @@ class SampleAttributions:
         else:
             self.bpe_attributions_layer = self.bpe_attributions[:, self.layer_id]
 
-    def _source_bpe_tokens(self):
+    def source_bpe_tokens(self):
         return self.bpe_tokens[1:self.sep_idx]
 
-    def _target_bpe_tokens(self):
+    def target_bpe_tokens(self):
         return self.bpe_tokens[self.sep_idx+2: self.eos_idx]
 
     def source_bpe_attributions(self):

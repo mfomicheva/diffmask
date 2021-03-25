@@ -2,7 +2,7 @@ import os
 import argparse
 import pytorch_lightning as pl
 
-from diffmask.models.quality_estimation import QualityEstimationBinaryClassification
+from diffmask.models.quality_estimation import QualityEstimationBinaryClassification, QualityEstimationRegression
 
 
 if __name__ == '__main__':
@@ -28,6 +28,7 @@ if __name__ == '__main__':
     parser.add_argument("--epochs", type=int, default=10)
     parser.add_argument("--class_weighting", default=False, action='store_true')
     parser.add_argument("--val_loss", default="f1", choices=["f1", "mcc"])
+    parser.add_argument("--num_labels", default=2, type=int)
 
     hparams = parser.parse_args()
     os.environ["CUDA_VISIBLE_DEVICES"] = hparams.gpu
@@ -40,7 +41,13 @@ if __name__ == '__main__':
     )
 
     assert not os.path.exists(hparams.model_path)
-    qe = QualityEstimationBinaryClassification(hparams)
+    if hparams.num_labels == 1:
+        qe = QualityEstimationRegression(hparams)
+    elif hparams.num_labels == 2:
+        qe = QualityEstimationBinaryClassification(hparams)
+    else:
+        raise NotImplementedError
+
     trainer = pl.Trainer(
         gpus=int(hparams.gpu != ""),
         progress_bar_refresh_rate=0,
