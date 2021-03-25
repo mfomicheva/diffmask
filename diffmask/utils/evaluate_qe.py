@@ -45,7 +45,7 @@ class SampleAttributions:
         self.set_layer_bpe_attributions()
         self.source_token_attributions = self._max_attribution(src_moses_bpe, self.source_bpe_attributions())
         self.target_token_attributions = self._max_attribution(tgt_moses_bpe, self.target_bpe_attributions())
-        self.special_token_attributions = [self.bpe_attributions[idx] for idx in (
+        self.special_token_attributions = [self.bpe_attributions[idx].cpu() for idx in (
             self.cls_idx, self.sep_idx, self.sep_idx + 1, self.eos_idx)]
         self.error_token_attributions = self._error_attributions(
             self.target_bpe_attributions(), self.word_labels, tgt_moses_bpe)
@@ -180,11 +180,11 @@ class EvaluateQE:
             tgt_attributions.extend(sample.target_bpe_attributions())
             special_attributions.extend(sample.special_token_attributions)
             bad_attributions.extend(sample.error_token_attributions)
-        print(np.mean(all_attributions))
-        print(np.mean(src_attributions))
-        print(np.mean(tgt_attributions))
-        print(np.mean(special_attributions))
-        print(np.mean(bad_attributions))
+        print('Mean all attributions: {}'.format(np.mean(all_attributions)))
+        print('Mean source attributions: {}'.format(np.mean(src_attributions)))
+        print('Mean target attributions: {}'.format(np.mean(tgt_attributions)))
+        print('Mean special token attributions: {}'.format(np.mean(special_attributions)))
+        print('Mean bad token attributions: {}'.format(np.mean(bad_attributions)))
 
     @staticmethod
     def auc_score(data, random=False):
