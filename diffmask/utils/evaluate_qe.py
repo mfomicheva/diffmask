@@ -42,6 +42,7 @@ class SampleAttributions:
             tgt_bpe_moses, tgt_moses_bpe = map_bpe_moses(self._target_bpe_tokens(), self.target_tokens)
         except ValueError:
             raise
+        self.set_layer_bpe_attributions()
         self.source_token_attributions = self._max_attribution(src_moses_bpe, self._source_bpe_attributions())
         self.target_token_attributions = self._max_attribution(tgt_moses_bpe, self._target_bpe_attributions())
         self.special_token_attributions = [self.bpe_attributions[idx] for idx in (
