@@ -45,7 +45,7 @@ class SampleAttributions:
         self.set_layer_bpe_attributions()
         self.source_token_attributions = self._max_attribution(src_moses_bpe, self.source_bpe_attributions())
         self.target_token_attributions = self._max_attribution(tgt_moses_bpe, self.target_bpe_attributions())
-        self.special_token_attributions = [self.bpe_attributions[idx].cpu() for idx in (
+        self.special_token_attributions = [self.bpe_attributions_layer[idx].cpu() for idx in (
             self.cls_idx, self.sep_idx, self.sep_idx + 1, self.eos_idx)]
         self.error_token_attributions = self._error_attributions(
             self.target_bpe_attributions(), self.word_labels, tgt_moses_bpe)
@@ -146,7 +146,7 @@ class EvaluateQE:
                 continue
             sample = SampleAttributions(
                 self.text_dataset[sentid][0].split(), self.text_dataset[sentid][1].split(), bpe_tokens,
-                self.attributions[sentid][sentid], self.text_dataset[sentid][3], sent_labels.item(), sent_pred, layer_id
+                self.attributions[sentid], self.text_dataset[sentid][3], sent_labels.item(), sent_pred, layer_id
             )
             try:
                 sample.map_attributions()
