@@ -45,16 +45,16 @@ class SampleAttributions:
         self.set_layer_bpe_attributions()
         self.source_token_attributions = self._max_attribution(src_moses_bpe, self.source_bpe_attributions())
         self.target_token_attributions = self._max_attribution(tgt_moses_bpe, self.target_bpe_attributions())
-        self.special_token_attributions = [self.bpe_attributions_layer[idx].cpu() for idx in (
+        self.special_token_attributions = [self.bpe_attributions_layer[idx] for idx in (
             self.cls_idx, self.sep_idx, self.sep_idx + 1, self.eos_idx)]
         self.error_token_attributions = self._error_attributions(
             self.target_bpe_attributions(), self.word_labels, tgt_bpe_moses)
 
     def set_layer_bpe_attributions(self):
         if self.layer_id == -1:
-            self.bpe_attributions_layer = torch.mean(self.bpe_attributions, dim=-1).cpu()
+            self.bpe_attributions_layer = torch.mean(self.bpe_attributions, dim=-1)
         else:
-            self.bpe_attributions_layer = self.bpe_attributions[:, self.layer_id].cpu()
+            self.bpe_attributions_layer = self.bpe_attributions[:, self.layer_id]
 
     def _source_bpe_tokens(self):
         return self.bpe_tokens[1:self.sep_idx]
@@ -140,13 +140,14 @@ class EvaluateQE:
             input_ids, mask, _, sent_labels = self.dataset[sentid]
             bpe_tokens = self.model.tokenizer.convert_ids_to_tokens(input_ids.squeeze()[:mask.sum(-1).item()].squeeze())
             sent_pred = predictions[sentid] if predictions is not None else None
+            bpe_attributions = self.attributions[sentid][:mask.sum(-1).item()].cpu()
             if ignore_correct_gold and sent_labels.item() != 1:
                 continue
             if ignore_correct_predicted and sent_pred is not None and sent_pred != 1:
                 continue
             sample = SampleAttributions(
                 self.text_dataset[sentid][0].split(), self.text_dataset[sentid][1].split(), bpe_tokens,
-                self.attributions[sentid], self.text_dataset[sentid][3], sent_labels.item(), sent_pred, layer_id
+                bpe_attributions, self.text_dataset[sentid][3], sent_labels.item(), sent_pred, layer_id
             )
             try:
                 sample.map_attributions()
