@@ -43,12 +43,12 @@ class SampleAttributions:
         except ValueError:
             raise
         self.set_layer_bpe_attributions()
-        self.source_token_attributions = self._max_attribution(src_moses_bpe, self._source_bpe_attributions())
-        self.target_token_attributions = self._max_attribution(tgt_moses_bpe, self._target_bpe_attributions())
+        self.source_token_attributions = self._max_attribution(src_moses_bpe, self.source_bpe_attributions())
+        self.target_token_attributions = self._max_attribution(tgt_moses_bpe, self.target_bpe_attributions())
         self.special_token_attributions = [self.bpe_attributions[idx] for idx in (
             self.cls_idx, self.sep_idx, self.sep_idx + 1, self.eos_idx)]
-        self.error_token_attributions = self._attributions_for_error_tokens(
-            self.target_token_attributions, self.word_labels, tgt_bpe_moses)
+        self.error_token_attributions = self._error_attributions(
+            self.target_bpe_attributions(), self.word_labels, tgt_moses_bpe)
 
     def set_layer_bpe_attributions(self):
         if self.layer_id == -1:
@@ -62,14 +62,14 @@ class SampleAttributions:
     def _target_bpe_tokens(self):
         return self.bpe_tokens[self.sep_idx+2: self.eos_idx]
 
-    def _source_bpe_attributions(self):
+    def source_bpe_attributions(self):
         return self.bpe_attributions_layer[1:self.sep_idx]
 
-    def _target_bpe_attributions(self):
+    def target_bpe_attributions(self):
         return self.bpe_attributions_layer[self.sep_idx+2:self.eos_idx]
 
     @staticmethod
-    def _attributions_for_error_tokens(attributions, labels, mapping):
+    def _error_attributions(attributions, labels, mapping):
         error_idxs = [i for i, l in enumerate(labels) if l == 1]
         return [a for i, a in enumerate(attributions) if mapping[i] in error_idxs]
 
@@ -176,8 +176,8 @@ class EvaluateQE:
         bad_attributions = []
         for sample in data:
             all_attributions.extend(sample.bpe_attributions_layer)
-            src_attributions.extend(sample.source_token_attributions)
-            tgt_attributions.extend(sample.target_token_attributions)
+            src_attributions.extend(sample.source_bpe_attributions())
+            tgt_attributions.extend(sample.target_bpe_attributions())
             special_attributions.extend(sample.special_token_attributions)
             bad_attributions.extend(sample.error_token_attributions)
         print(np.mean(all_attributions))
