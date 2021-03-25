@@ -23,7 +23,7 @@ from ..utils.getter_setter import (
     gru_getter,
     gru_setter,
 )
-from ..utils.util import accuracy_precision_recall_f1
+from ..utils.metrics import accuracy_precision_recall_f1
 
 
 class SentimentClassificationSSTDiffMask(SentimentClassificationSST):

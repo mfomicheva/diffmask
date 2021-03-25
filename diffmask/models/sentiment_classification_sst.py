@@ -8,7 +8,7 @@ from transformers import (
     get_constant_schedule_with_warmup,
     get_constant_schedule,
 )
-from ..utils.util import accuracy_precision_recall_f1
+from ..utils.metrics import accuracy_precision_recall_f1
 
 
 def load_sst(path, tokenizer, lower=False):

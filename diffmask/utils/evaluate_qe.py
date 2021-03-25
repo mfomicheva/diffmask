@@ -5,10 +5,80 @@ from sklearn.metrics import roc_curve, roc_auc_score
 from matplotlib import pyplot
 
 from diffmask.attributions.schulz import schulz_explainer, roberta_hidden_states_statistics
-from diffmask.utils.util import accuracy_precision_recall_f1, matthews_corr_coef
+from diffmask.utils.metrics import accuracy_precision_recall_f1, matthews_corr_coef
+from diffmask.utils.util import map_bpe_moses
 
 
-class AttributionsQE:
+class SampleAttributions:
+
+    def __init__(
+            self, source_tokens, target_tokens, bpe_tokens, bpe_attributions, word_labels, sent_label,
+            sent_pred, layer_id,
+    ):
+        self.source_tokens = source_tokens
+        self.target_tokens = target_tokens
+        self.bpe_tokens = bpe_tokens
+        self.bpe_attributions = bpe_attributions
+        self.word_labels = word_labels
+        self.sent_label = sent_label
+        self.sent_pred = sent_pred
+        self.layer_id = layer_id
+
+        self.cls_idx = 0
+        self.sep_idx = self.bpe_tokens.index('</s>')
+        self.eos_idx = len(self.bpe_tokens) - 1
+
+        self.bpe_attributions_layer = None
+        self.source_token_attributions = None
+        self.target_token_attributions = None
+        self.special_token_attributions = None
+        self.error_token_attributions = None
+        self.random_attributions = None
+        self.bpe_moses_target = None
+
+    def map_attributions(self):
+        try:
+            src_bpe_moses, src_moses_bpe = map_bpe_moses(self._source_bpe_tokens(), self.source_tokens)
+            tgt_bpe_moses, tgt_moses_bpe = map_bpe_moses(self._target_bpe_tokens(), self.target_tokens)
+        except ValueError:
+            raise
+        self.source_token_attributions = self._max_attribution(src_moses_bpe, self._source_bpe_attributions())
+        self.target_token_attributions = self._max_attribution(tgt_moses_bpe, self._target_bpe_attributions())
+        self.special_token_attributions = [self.bpe_attributions[idx] for idx in (
+            self.cls_idx, self.sep_idx, self.sep_idx + 1, self.eos_idx)]
+        self.error_token_attributions = self._attributions_for_error_tokens(
+            self.target_token_attributions, self.word_labels, tgt_moses_bpe)
+
+    def set_layer_bpe_attributions(self):
+        if self.layer_id == -1:
+            self.bpe_attributions_layer = torch.mean(self.bpe_attributions, dim=-1)
+        else:
+            self.bpe_attributions_layer = self.bpe_attributions[:, self.layer_id]
+
+    def _source_bpe_tokens(self):
+        return self.bpe_tokens[1:self.sep_idx]
+
+    def _target_bpe_tokens(self):
+        return self.bpe_tokens[self.sep_idx+2: self.eos_idx]
+
+    def _source_bpe_attributions(self):
+        return self.bpe_attributions_layer[1:self.sep_idx]
+
+    def _target_bpe_attributions(self):
+        return self.bpe_attributions_layer[self.sep_idx+2:self.eos_idx]
+
+    @staticmethod
+    def _attributions_for_error_tokens(attributions, labels, mapping):
+        error_idxs = [l for l in labels if l == 1]
+        return [a for i, a in enumerate(attributions) if mapping[i] in error_idxs]
+
+    @staticmethod
+    def _max_attribution(moses_to_bpe, bpe_attributions):
+        token_indexes = sorted(moses_to_bpe.keys())
+        return [max([bpe_attributions[bpe_idx] for bpe_idx in moses_to_bpe[index]]) for index in token_indexes]
+
+
+class EvaluateQE:
 
     def __init__(self, model, getter, setter, layer_indexes, device, split='valid'):
         self.model = model
@@ -60,98 +130,71 @@ class AttributionsQE:
                     break
         self.attributions = result
 
-    def select_target_data(self, layer_id):
+    def select_target_data(self, layer_id, ignore_correct_gold=True, ignore_correct_predicted=True, predictions=None):
         if layer_id != -1:
             assert layer_id in self.layer_indexes
             layer_id = self.layer_indexes.index(layer_id)
         res = []
         for sentid in range(len(self.attributions)):
-            src = self.text_dataset[sentid][0].split()
-            target_words = self.text_dataset[sentid][1].split()
-            input_ids, mask, _, labels = self.dataset[sentid]
-            tokens = self.model.tokenizer.convert_ids_to_tokens(input_ids.squeeze()[:mask.sum(-1).item()].squeeze())
-            token_attributions = self.attributions[sentid][:mask.sum(-1).item()].cpu()
-            tgt_start_idx = tokens.index('</s>') + 2
-            target_tokens = tokens[tgt_start_idx:]
-            target_token_attributions_all = token_attributions[tgt_start_idx:, :]
-            if layer_id == -1:
-                target_token_attributions = torch.mean(target_token_attributions_all, dim=-1)
-            else:
-                target_token_attributions = target_token_attributions_all[:, layer_id]
-            target_word_attributions = self._find_word_with_max_attribution(target_tokens, target_token_attributions, target_words)
-            item = {
-                'source': src,
-                'target_words': target_words,
-                'target_tokens': target_tokens,
-                'target_word_attributions': target_word_attributions,
-                'target_word_attributions_random': torch.rand((len(target_word_attributions),)).tolist(),
-                'target_token_attributions_all_layers': target_token_attributions_all,
-                'target_token_attributions': target_token_attributions.squeeze(),
-                'word_labels': self.text_dataset[sentid][3],
-                'sent_label': labels.item(),
-            }
-            res.append(item)
+            input_ids, mask, _, sent_labels = self.dataset[sentid]
+            bpe_tokens = self.model.tokenizer.convert_ids_to_tokens(input_ids.squeeze()[:mask.sum(-1).item()].squeeze())
+            sent_pred = predictions[sentid] if predictions is not None else None
+            if ignore_correct_gold and sent_labels.item() != 1:
+                continue
+            if ignore_correct_predicted and sent_pred is not None and sent_pred != 1:
+                continue
+            sample = SampleAttributions(
+                self.text_dataset[sentid][0].split(), self.text_dataset[sentid][1].split(), bpe_tokens,
+                self.attributions, self.text_dataset[sentid][3], sent_labels.item(), sent_pred, layer_id
+            )
+            try:
+                sample.map_attributions()
+            except ValueError:
+                print('BPE mapping error! Skipping...')
+                continue
+            try:
+                assert len(sample.word_labels) == len(sample.target_token_attributions)
+            except AssertionError:
+                print('Sequence too long. Skipping')
+                continue
+            if len(sample.source_tokens) == 0 or len(sample.target_tokens) == 0 or len(sample.bpe_tokens) == 0:
+                print('Empty segment! Skipping...')
+                continue
+            res.append(sample)
         return res
 
     def generate_predictions(self, evaluate=False):
         return generate_predictions(self.model, self.loader, self.device, evaluate=evaluate)
 
     @staticmethod
-    def top1_accuracy(
-            data, topk=1, silent=False, predictions=None, ignore_correct_gold=True, ignore_correct_predicted=True,
-            random=False,
-    ):
-        # data: output of self.select_target()
-        total_by_sent = 0
-        correct_by_sent = 0
-        if ignore_correct_predicted:
-            assert predictions is not None
-            assert len(predictions) == len(data)
-        for i, item in enumerate(data):
-            if ignore_correct_gold and item['sent_label'] != 1:
-                continue
-            if ignore_correct_predicted and predictions[i] != 1:
-                continue
-            try:
-                assert len(item['word_labels']) == len(item['target_word_attributions'])
-            except AssertionError:
-                if not silent:
-                    print('Sequence too long. Skipping')
-                continue
-            gold = set([idx for idx, val in enumerate(item['word_labels']) if val == 1])
-            attributions = item['target_word_attributions_random'] if random else item['target_word_attributions']
-            highest_attributions = np.argsort(attributions)[::-1]
-            highest_attributions = highest_attributions[:topk]
-            if any([idx in gold for idx in highest_attributions]):
-                correct_by_sent += 1
-            total_by_sent += 1
-        print(correct_by_sent)
-        print(total_by_sent)
-        print('{:.3f}'.format(correct_by_sent / total_by_sent))
+    def attributions_types(data):
+        all_attributions = []
+        src_attributions = []
+        tgt_attributions = []
+        special_attributions = []
+        bad_attributions = []
+        for sample in data:
+            all_attributions.extend(sample.bpe_attributions_layer)
+            src_attributions.extend(sample.source_token_attributions)
+            tgt_attributions.extend(sample.target_token_attributions)
+            special_attributions.extend(sample.special_token_attributions)
+            bad_attributions.extend(sample.error_token_attributions)
+        print(np.mean(all_attributions))
+        print(np.mean(src_attributions))
+        print(np.mean(tgt_attributions))
+        print(np.mean(special_attributions))
+        print(np.mean(bad_attributions))
 
     @staticmethod
-    def auc_score(
-            data, silent=False, predictions=None, ignore_correct_gold=True, ignore_correct_predicted=True,
-            random=False
-    ):
+    def auc_score(data, random=False):
         ys = []
         yhats = []
-        if ignore_correct_predicted:
-            assert predictions is not None
-            assert len(predictions) == len(data)
-        for i, item in enumerate(data):
-            if ignore_correct_gold and item['sent_label'] != 1:
-                continue
-            if ignore_correct_predicted and predictions[i] != 1:
-                continue
-            try:
-                assert len(item['word_labels']) == len(item['target_word_attributions'])
-            except AssertionError:
-                if not silent:
-                    print('Sequence too long. Skipping')
-                continue
-            attributions = item['target_word_attributions_random'] if random else item['target_word_attributions']
-            for idx, val in enumerate(item['word_labels']):
+        for i, sample in enumerate(data):
+            if random:
+                attributions = torch.rand((len(sample.target_token_attributions),)).tolist()
+            else:
+                attributions = sample.target_token_attributions
+            for idx, val in enumerate(sample.word_labels):
                 ys.append(val)
                 yhats.append(attributions[idx])
         fpr, tpr, _ = roc_curve(ys, yhats)
@@ -161,33 +204,24 @@ class AttributionsQE:
         print(score)
 
     @staticmethod
-    def _find_word_with_max_attribution(target_tokens, target_attributions, words):
-        char_to_word = {}
-        char_count = 0
-        for i, w in enumerate(words):
-            for _ in w:
-                char_to_word[char_count] = i
-                char_count += 1
-        char_count = 0
-        word_attr = dict()
-        curr_word = None
-        curr_max = 0
-        assert len(target_attributions) == len(target_tokens)
-        for tok, attr in zip(target_tokens, target_attributions):
-            if tok == '<s>' or tok == '</s>':
-                continue
-            for _ in tok.lstrip('▁'):
-                if curr_word is None:
-                    curr_word = char_to_word[char_count]
-                if curr_word != char_to_word[char_count]:
-                    word_attr[curr_word] = curr_max * -1
-                    curr_word = char_to_word[char_count]
-                    curr_max = 0
-                if attr * -1 < curr_max:
-                    curr_max = attr * -1
-                char_count += 1
-        word_attr[curr_word] = curr_max * -1
-        return [word_attr[idx].item() for idx in range(len(word_attr))]
+    def top1_accuracy(data, topk=1, random=False, ):
+        # data: output of self.select_target()
+        total_by_sent = 0
+        correct_by_sent = 0
+        for i, sample in enumerate(data):
+            gold = set([idx for idx, val in enumerate(sample.word_labels) if val == 1])
+            if random:
+                attributions = torch.rand((len(sample.target_token_attributions),)).tolist()
+            else:
+                attributions = sample.target_token_attributions
+            highest_attributions = np.argsort(attributions)[::-1]
+            highest_attributions = highest_attributions[:topk]
+            if any([idx in gold for idx in highest_attributions]):
+                correct_by_sent += 1
+            total_by_sent += 1
+        print(correct_by_sent)
+        print(total_by_sent)
+        print('{:.3f}'.format(correct_by_sent / total_by_sent))
 
 
 def generate_predictions(model, loader, device, evaluate=False):

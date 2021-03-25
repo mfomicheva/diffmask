@@ -9,7 +9,7 @@ from transformers import (
     get_constant_schedule_with_warmup,
 )
 
-from ..utils.util import accuracy_precision_recall_f1, matthews_corr_coef
+from ..utils.metrics import accuracy_precision_recall_f1, matthews_corr_coef
 
 
 def _truncate_seq_pair(tokens_a, tokens_b, max_length):
