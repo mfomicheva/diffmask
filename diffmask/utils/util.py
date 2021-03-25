@@ -16,7 +16,6 @@ def map_bpe_moses(bpe_tokens, moses_tokens):  # all special tokens need to be pr
     tok_idx_bpe = 0
     tok_idx_moses = 0
     mapping = dict()
-    error = False
     while True:
         if chrt_idx_bpe >= len(bpe_tokens) or chrt_idx_moses >= len(moses_tokens):
             mapping[tok_idx_bpe] = tok_idx_moses

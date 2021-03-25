@@ -13,7 +13,7 @@ class SampleAttributions:
 
     def __init__(
             self, source_tokens, target_tokens, bpe_tokens, bpe_attributions, word_labels, sent_label,
-            sent_pred, layer_id,
+            sent_pred, layer_id
     ):
         self.source_tokens = source_tokens
         self.target_tokens = target_tokens
@@ -146,7 +146,7 @@ class EvaluateQE:
                 continue
             sample = SampleAttributions(
                 self.text_dataset[sentid][0].split(), self.text_dataset[sentid][1].split(), bpe_tokens,
-                self.attributions, self.text_dataset[sentid][3], sent_labels.item(), sent_pred, layer_id
+                self.attributions[sentid], self.text_dataset[sentid][3], sent_labels.item(), sent_pred, layer_id
             )
             try:
                 sample.map_attributions()
