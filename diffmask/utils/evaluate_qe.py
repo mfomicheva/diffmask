@@ -48,13 +48,13 @@ class SampleAttributions:
         self.special_token_attributions = [self.bpe_attributions[idx] for idx in (
             self.cls_idx, self.sep_idx, self.sep_idx + 1, self.eos_idx)]
         self.error_token_attributions = self._attributions_for_error_tokens(
-            self.target_token_attributions, self.word_labels, tgt_moses_bpe)
+            self.target_token_attributions, self.word_labels, tgt_bpe_moses)
 
     def set_layer_bpe_attributions(self):
         if self.layer_id == -1:
-            self.bpe_attributions_layer = torch.mean(self.bpe_attributions, dim=-1)
+            self.bpe_attributions_layer = torch.mean(self.bpe_attributions, dim=-1).cpu()
         else:
-            self.bpe_attributions_layer = self.bpe_attributions[:, self.layer_id]
+            self.bpe_attributions_layer = self.bpe_attributions[:, self.layer_id].cpu()
 
     def _source_bpe_tokens(self):
         return self.bpe_tokens[1:self.sep_idx]
@@ -70,7 +70,7 @@ class SampleAttributions:
 
     @staticmethod
     def _attributions_for_error_tokens(attributions, labels, mapping):
-        error_idxs = [l for l in labels if l == 1]
+        error_idxs = [i for i, l in enumerate(labels) if l == 1]
         return [a for i, a in enumerate(attributions) if mapping[i] in error_idxs]
 
     @staticmethod
