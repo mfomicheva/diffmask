@@ -145,7 +145,7 @@ class QualityEstimation(pl.LightningModule):
     def training_step(self, batch, batch_idx=None):
         input_ids, mask, _, labels = batch
 
-        outputs = self.forward(input_ids, mask)
+        outputs = self.forward(input_ids, mask, labels=labels)
         loss = outputs[0]
         logits = outputs[1]
         outputs_dict = self.compute_metrics(logits.argmax(-1), labels, loss)
