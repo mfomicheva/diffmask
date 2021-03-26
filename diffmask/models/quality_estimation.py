@@ -145,8 +145,9 @@ class QualityEstimation(pl.LightningModule):
     def training_step(self, batch, batch_idx=None):
         input_ids, mask, _, labels = batch
 
-        logits = self.forward(input_ids, mask)[0]
-        loss = self.loss(logits, labels)
+        outputs = self.forward(input_ids, mask)
+        loss = outputs[0]
+        logits = outputs[1]
         outputs_dict = self.compute_metrics(logits.argmax(-1), labels, loss)
 
         outputs_dict = {
@@ -177,7 +178,7 @@ class QualityEstimation(pl.LightningModule):
         }
 
         outputs_dict = {
-            "val_loss": -outputs_dict["val_{}".format(self.hparams.val_loss)],
+            "val_loss": self.val_loss(outputs_dict["val_{}".format(self.hparams.val_loss)]),
             **outputs_dict,
             "log": outputs_dict,
         }
@@ -197,6 +198,9 @@ class QualityEstimation(pl.LightningModule):
 
         return optimizers, schedulers
 
+    def forward(self, input_ids, mask, labels=None):
+        return self.net(input_ids=input_ids, attention_mask=mask, labels=labels)
+
 
 class QualityEstimationBinaryClassification(QualityEstimation):
 
@@ -210,13 +214,9 @@ class QualityEstimationBinaryClassification(QualityEstimation):
         if self.hparams.val_loss not in self.metrics:
             self.metrics.append(self.hparams.val_loss)
 
-    def forward(self, input_ids, mask, labels=None):
-        return self.net(input_ids=input_ids, attention_mask=mask)
-
     @staticmethod
-    def loss(logits, labels):
-        loss = torch.nn.functional.cross_entropy(logits, labels, reduction="none").mean(-1)
-        return loss
+    def val_loss(val_loss):
+        return -val_loss
 
     @staticmethod
     def compute_metrics(logits, labels):
@@ -241,13 +241,9 @@ class QualityEstimationRegression(QualityEstimation):
         self.metrics = ["mse"]
         self.regression = True
 
-    def forward(self, input_ids, mask, labels=None):
-        return self.net(input_ids=input_ids, attention_mask=mask)
-
     @staticmethod
-    def loss(logits, labels):
-        loss = torch.nn.functional.mse_loss(logits, labels, reduction="mean")
-        return loss
+    def val_loss(val_loss):
+        return val_loss
 
     @staticmethod
     def compute_metrics(logits, labels, loss):
