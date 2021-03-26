@@ -247,7 +247,7 @@ def generate_predictions(model, loader, device, evaluate=False, regression=False
 
     if evaluate:
         if regression:
-            print(pearsonr(all_predictions.cpu(), all_labels.cpu())[0])
+            print(pearsonr(all_predictions.squeeze().cpu(), all_labels.cpu())[0])
         else:
             accuracy, precision, recall, f1 = accuracy_precision_recall_f1(all_predictions, all_labels, average=False)
             mcc = matthews_corr_coef(all_predictions, all_labels,)
@@ -255,4 +255,4 @@ def generate_predictions(model, loader, device, evaluate=False, regression=False
             print(mcc)
             print(sum(all_predictions.tolist()) / len(all_predictions.tolist()))
             print(sum(all_labels.tolist()) / len(all_labels.tolist()))
-    return all_predictions.tolist()
+    return all_predictions.squeeze().tolist()
