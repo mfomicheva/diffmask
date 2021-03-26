@@ -237,8 +237,9 @@ def generate_predictions(model, loader, device, evaluate=False, regression=False
             'mask': mask.to(device),
             'labels': labels.to(device),
         }
-        logits = model(**inputs_dict)[0]
-        all_predictions.append(logits.argmax(-1))
+        logits = model(**inputs_dict)[1]
+        batch_predictions = logits if regression else logits.argmax(-1)
+        all_predictions.append(batch_predictions)
         all_labels.append(labels)
 
     all_predictions = torch.cat(all_predictions, dim=0).to(device)

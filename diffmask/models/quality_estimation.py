@@ -78,7 +78,7 @@ def load_sent_level(
         torch.tensor([d[0] for d in data_tuples], dtype=torch.long),
         torch.tensor([d[1] for d in data_tuples], dtype=torch.long),
         torch.tensor([d[2] for d in data_tuples], dtype=torch.long),
-        torch.tensor([d[3] for d in data_tuples], dtype=torch.float32 if regression else torch.long),
+        torch.tensor([d[3] for d in data_tuples], dtype=torch.float64 if regression else torch.long),
     ]
     return torch.utils.data.TensorDataset(*tensor_dataset), data_text
 
