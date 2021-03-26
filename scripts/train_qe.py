@@ -27,7 +27,7 @@ if __name__ == '__main__':
     parser.add_argument("--learning_rate", type=float, default=3e-5)
     parser.add_argument("--epochs", type=int, default=10)
     parser.add_argument("--class_weighting", default=False, action='store_true')
-    parser.add_argument("--val_loss", default="f1", choices=["f1", "mcc"])
+    parser.add_argument("--val_loss", default="f1", choices=["f1", "mcc", "mse"])
     parser.add_argument("--num_labels", default=2, type=int)
 
     hparams = parser.parse_args()
