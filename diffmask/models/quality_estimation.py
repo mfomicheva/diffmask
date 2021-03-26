@@ -144,7 +144,10 @@ class QualityEstimation(pl.LightningModule):
         input_ids, mask, _, labels = batch
 
         logits = self.forward(input_ids, mask)[0]
-        loss = torch.nn.functional.cross_entropy(logits, labels, reduction="none").mean(-1)
+        if self.hparams.num_labels > 1:
+            loss = torch.nn.functional.cross_entropy(logits, labels, reduction="none").mean(-1)
+        else:
+            loss = torch.nn.functional.mse_loss(logits, labels, reduction="mean")
         outputs_dict = self.compute_metrics(logits.argmax(-1), labels, loss)
 
         outputs_dict = {
