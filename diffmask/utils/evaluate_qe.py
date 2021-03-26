@@ -166,8 +166,8 @@ class EvaluateQE:
             res.append(sample)
         return res
 
-    def generate_predictions(self, evaluate=False):
-        return generate_predictions(self.model, self.loader, self.device, evaluate=evaluate)
+    def generate_predictions(self, evaluate=False, regression=False):
+        return generate_predictions(self.model, self.loader, self.device, evaluate=evaluate, regression=regression)
 
     @staticmethod
     def attributions_types(data):
