@@ -45,7 +45,7 @@ if __name__ == '__main__':
     qe.freeze()
     qe.prepare_data()
     loader = qe.test_dataloader()
-    predictions = generate_predictions(qe, loader, device, evaluate=True)
+    predictions = generate_predictions(qe, loader, device, evaluate=True, regression=hparams.num_labels == 1)
     if hparams.save_path is not None:
         with open(hparams.save_path, 'w') as o:
             for p in predictions:
