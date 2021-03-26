@@ -24,7 +24,8 @@ def _truncate_seq_pair(tokens_a, tokens_b, max_length):
             tokens_b.pop()
 
 
-def load_sent_level(path_src, path_tgt, path_labels, tokenizer, max_seq_length=128, path_word_labels=None):
+def load_sent_level(
+        path_src, path_tgt, path_labels, tokenizer, regression=False, max_seq_length=128, path_word_labels=None):
 
     def _read_file(path, label=False):
         return [float(l.strip()) if label else l.strip() for l in open(path)]
@@ -77,7 +78,7 @@ def load_sent_level(path_src, path_tgt, path_labels, tokenizer, max_seq_length=1
         torch.tensor([d[0] for d in data_tuples], dtype=torch.long),
         torch.tensor([d[1] for d in data_tuples], dtype=torch.long),
         torch.tensor([d[2] for d in data_tuples], dtype=torch.long),
-        torch.tensor([d[3] for d in data_tuples], dtype=torch.long),
+        torch.tensor([d[3] for d in data_tuples], dtype=torch.float32 if regression else torch.long),
     ]
     return torch.utils.data.TensorDataset(*tensor_dataset), data_text
 
@@ -93,22 +94,23 @@ class QualityEstimation(pl.LightningModule):
         self.val_dataset_orig = None
         self.test_dataset = None
         self.test_dataset_orig = None
+        self.regression = False
 
     def prepare_data(self):
         if self.hparams.src_train_filename is not None:
             self.train_dataset, self.train_dataset_orig = load_sent_level(
                 self.hparams.src_train_filename, self.hparams.tgt_train_filename, self.hparams.labels_train_filename,
-                self.tokenizer, path_word_labels=self.hparams.word_labels_train_filename,
+                self.tokenizer, path_word_labels=self.hparams.word_labels_train_filename, regression=self.regression
             )
         if self.hparams.src_val_filename is not None:
             self.val_dataset, self.val_dataset_orig = load_sent_level(
                 self.hparams.src_val_filename, self.hparams.tgt_val_filename, self.hparams.labels_val_filename,
-                self.tokenizer, path_word_labels=self.hparams.word_labels_val_filename
+                self.tokenizer, path_word_labels=self.hparams.word_labels_val_filename, regression=self.regression
             )
         if self.hparams.src_test_filename is not None:
             self.test_dataset, self.test_dataset_orig = load_sent_level(
                 self.hparams.src_test_filename, self.hparams.tgt_test_filename, self.hparams.labels_test_filename,
-                self.tokenizer, path_word_labels=self.hparams.word_labels_test_filename
+                self.tokenizer, path_word_labels=self.hparams.word_labels_test_filename, regression=self.regression
             )
 
     def make_sampler(self):
@@ -144,10 +146,7 @@ class QualityEstimation(pl.LightningModule):
         input_ids, mask, _, labels = batch
 
         logits = self.forward(input_ids, mask)[0]
-        if self.hparams.num_labels > 1:
-            loss = torch.nn.functional.cross_entropy(logits, labels, reduction="none").mean(-1)
-        else:
-            loss = torch.nn.functional.mse_loss(logits, labels, reduction="mean")
+        loss = self.loss(logits, labels)
         outputs_dict = self.compute_metrics(logits.argmax(-1), labels, loss)
 
         outputs_dict = {
@@ -215,6 +214,11 @@ class QualityEstimationBinaryClassification(QualityEstimation):
         return self.net(input_ids=input_ids, attention_mask=mask)
 
     @staticmethod
+    def loss(logits, labels):
+        loss = torch.nn.functional.cross_entropy(logits, labels, reduction="none").mean(-1)
+        return loss
+
+    @staticmethod
     def compute_metrics(logits, labels):
         acc, _, _, f1 = accuracy_precision_recall_f1(logits.argmax(-1), labels, average=True)
         mcc = matthews_corr_coef(logits.argmax(-1), labels)
@@ -235,9 +239,15 @@ class QualityEstimationRegression(QualityEstimation):
         config.num_labels = 1
         self.net = XLMRobertaForSequenceClassification.from_pretrained(self.hparams.model, config=config)
         self.metrics = ["mse"]
+        self.regression = True
 
     def forward(self, input_ids, mask, labels=None):
         return self.net(input_ids=input_ids, attention_mask=mask)
+
+    @staticmethod
+    def loss(logits, labels):
+        loss = torch.nn.functional.mse_loss(logits, labels, reduction="mean")
+        return loss
 
     @staticmethod
     def compute_metrics(logits, labels, loss):
