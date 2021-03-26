@@ -27,6 +27,7 @@ if __name__ == '__main__':
     parser.add_argument("--class_weighting", default=False, action='store_true')
     parser.add_argument("--val_loss", default="f1", choices=["f1", "mcc"])
     parser.add_argument("--num_labels", default=2, type=int)
+    parser.add_argument("--save_path", default=None, type=str)
 
     hparams = parser.parse_args()
     os.environ["CUDA_VISIBLE_DEVICES"] = hparams.gpu
@@ -45,3 +46,7 @@ if __name__ == '__main__':
     qe.prepare_data()
     loader = qe.test_dataloader()
     predictions = generate_predictions(qe, loader, device, evaluate=True)
+    if hparams.save_path is not None:
+        with open(hparams.save_path, 'w') as o:
+            for p in predictions:
+                o.write('{}\n'.format(p))

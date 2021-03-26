@@ -2,6 +2,7 @@ import torch
 import numpy as np
 
 from sklearn.metrics import roc_curve, roc_auc_score
+from scipy.stats import pearsonr
 from matplotlib import pyplot
 
 from diffmask.attributions.schulz import schulz_explainer, roberta_hidden_states_statistics
@@ -226,7 +227,7 @@ class EvaluateQE:
         print('{:.3f}'.format(correct_by_sent / total_by_sent))
 
 
-def generate_predictions(model, loader, device, evaluate=False):
+def generate_predictions(model, loader, device, evaluate=False, regression=False):
     all_predictions = []
     all_labels = []
     for batch_idx, sample in enumerate(loader):
@@ -244,10 +245,13 @@ def generate_predictions(model, loader, device, evaluate=False):
     all_labels = torch.cat(all_labels, dim=0).to(device)
 
     if evaluate:
-        accuracy, precision, recall, f1 = accuracy_precision_recall_f1(all_predictions, all_labels, average=False)
-        mcc = matthews_corr_coef(all_predictions, all_labels,)
-        print((accuracy, precision[1], recall[1], f1[1]))  # do not average, print for class=1
-        print(mcc)
-        print(sum(all_predictions.tolist()) / len(all_predictions.tolist()))
-        print(sum(all_labels.tolist()) / len(all_labels.tolist()))
+        if regression:
+            print(pearsonr(all_predictions.cpu(), all_labels.cpu())[0])
+        else:
+            accuracy, precision, recall, f1 = accuracy_precision_recall_f1(all_predictions, all_labels, average=False)
+            mcc = matthews_corr_coef(all_predictions, all_labels,)
+            print((accuracy, precision[1], recall[1], f1[1]))  # do not average, print for class=1
+            print(mcc)
+            print(sum(all_predictions.tolist()) / len(all_predictions.tolist()))
+            print(sum(all_labels.tolist()) / len(all_labels.tolist()))
     return all_predictions.tolist()
