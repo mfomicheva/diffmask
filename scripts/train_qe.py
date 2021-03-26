@@ -31,6 +31,7 @@ if __name__ == '__main__':
     parser.add_argument("--num_labels", default=2, type=int)
 
     hparams = parser.parse_args()
+    print(hparams)
     os.environ["CUDA_VISIBLE_DEVICES"] = hparams.gpu
 
     checkpoint_callback = pl.callbacks.ModelCheckpoint(
