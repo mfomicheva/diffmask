@@ -42,8 +42,8 @@ def print_attributions(tokens, attributions, labels=None, special=True, topk=Non
         )
     if topk:
         attributions = torch.tensor(attributions)
-        threshold, _ = torch.sort(attributions, descending=True)[min(topk, len(attributions) - 1)]
-        threshold = torch.full((len(attributions),), threshold)
+        threshold, _ = torch.sort(attributions, descending=True)
+        threshold = torch.full((len(attributions),), threshold[min(topk, len(attributions) - 1)])
         sparse_attributions = torch.zeros((len(attributions,)))
         sparse_attributions[attributions > threshold] = 1
         _print(tokens, sparse_attributions)
