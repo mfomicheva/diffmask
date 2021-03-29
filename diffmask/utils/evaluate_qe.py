@@ -141,7 +141,10 @@ class EvaluateQE:
             pickle.dump(result, open(save, 'wb'))
         self.attributions = result
 
-    def select_target_data(self, layer_id, ignore_correct_gold=True, ignore_correct_predicted=True, predictions=None):
+    def select_target_data(
+            self, layer_id, ignore_correct_gold=True, ignore_correct_predicted=True, predictions=None,
+            regression_threshold=None
+    ):
         if layer_id != -1:
             assert layer_id in self.layer_indexes
             layer_id = self.layer_indexes.index(layer_id)
@@ -157,10 +160,11 @@ class EvaluateQE:
                     continue
                 if ignore_correct_predicted and sent_pred is not None and sent_pred != 1:
                     continue
-            else:
-                if ignore_correct_gold and sent_labels.item() < 0.2:
+            else:  # we are doing regression
+                assert regression_threshold is not None
+                if ignore_correct_gold and sent_labels.item() < regression_threshold:
                     continue
-                if ignore_correct_predicted and sent_pred is not None and sent_pred < 0.2:
+                if ignore_correct_predicted and sent_pred is not None and sent_pred < regression_threshold:
                     continue
             sample = SampleAttributions(
                 self.text_dataset[sentid][0].split(), self.text_dataset[sentid][1].split(), bpe_tokens,

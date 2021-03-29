@@ -35,6 +35,7 @@ if __name__ == '__main__':
     parser.add_argument("--num_layers", default=12, type=int)
     parser.add_argument("--save", default=None, type=str)
     parser.add_argument("--load", default=None, type=str)
+    parser.add_argument("--regression_threshold", default=None, type=float)
 
     hparams = parser.parse_args()
     print(hparams)
@@ -72,6 +73,7 @@ if __name__ == '__main__':
     for layerid in range(hparams.num_layers):
         data = attributions_qe.select_target_data(
             layerid, ignore_correct_gold=True, ignore_correct_predicted=True, predictions=predictions,
+            regression_threshold=hparams.regression_threshold
         )
 
         print('Random')
