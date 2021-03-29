@@ -145,9 +145,8 @@ class QualityEstimation(pl.LightningModule):
     def training_step(self, batch, batch_idx=None):
         input_ids, mask, _, labels = batch
 
-        outputs = self.forward(input_ids, mask, labels=labels)
-        loss = outputs[0]
-        logits = outputs[1]
+        logits = self.forward(input_ids, mask)[0]
+        loss = self.loss(logits, labels)
         outputs_dict = self.compute_metrics(logits.argmax(-1), labels, loss)
 
         outputs_dict = {
@@ -219,6 +218,11 @@ class QualityEstimationBinaryClassification(QualityEstimation):
         return -val_loss
 
     @staticmethod
+    def loss(logits, labels):
+        loss = torch.nn.functional.cross_entropy(logits, labels, reduction="none").mean(-1)
+        return loss
+
+    @staticmethod
     def compute_metrics(logits, labels):
         acc, _, _, f1 = accuracy_precision_recall_f1(logits.argmax(-1), labels, average=True)
         mcc = matthews_corr_coef(logits.argmax(-1), labels)
@@ -244,6 +248,11 @@ class QualityEstimationRegression(QualityEstimation):
     @staticmethod
     def val_loss(val_loss):
         return val_loss
+
+    @staticmethod
+    def loss(logits, labels):
+        loss = torch.nn.functional.mse_loss(logits, labels, reduction="mean")
+        return loss
 
     @staticmethod
     def compute_metrics(logits, labels, loss):
