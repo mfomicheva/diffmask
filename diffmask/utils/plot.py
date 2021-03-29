@@ -41,13 +41,10 @@ def print_attributions(tokens, attributions, labels=None, special=True, topk=Non
             )
         )
     if topk:
-        try:
-            threshold = sorted(attributions, reverse=True)[topk]
-        except IndexError:
-            threshold = sorted(attributions, reverse=True)[-1]
-        threshold = np.repeat(threshold, len(attributions))
-        sparse_attributions = np.zeros((len(attributions,)))
-        sparse_attributions[np.asarray(attributions) > threshold] = 1
+        threshold = torch.sort(attributions, descending=True)[min(topk, len(attributions) - 1)]
+        threshold = torch.full((len(attributions),), threshold)
+        sparse_attributions = torch.zeros((len(attributions,)))
+        sparse_attributions[attributions > threshold] = 1
         _print(tokens, sparse_attributions)
     else:
         _print(tokens, np.asarray(attributions) / max(attributions))
