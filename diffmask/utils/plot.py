@@ -42,8 +42,9 @@ def print_attributions(tokens, attributions, labels=None, special=True, topk=Non
         )
     if topk:
         threshold = sorted(attributions, reverse=True)[topk]
-        sparse_attributions = np.zeros(attributions.shape)
-        sparse_attributions[sparse_attributions > threshold] = 1
+        threshold = np.repeat(threshold, len(attributions))
+        sparse_attributions = np.zeros((len(attributions,)))
+        sparse_attributions[np.asarray(attributions) > threshold] = 1
         _print(tokens, sparse_attributions)
     else:
         _print(tokens, np.asarray(attributions) / max(attributions))
