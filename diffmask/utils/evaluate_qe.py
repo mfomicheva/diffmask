@@ -95,7 +95,7 @@ class EvaluateQE:
         self.dataset = self.model.test_dataset if split == 'test' else self.model.val_dataset
         self.attributions = None
 
-    def attribution_schulz(self):
+    def attribution_schulz(self, verbose=False):
         all_q_z_loc, all_q_z_scale = roberta_hidden_states_statistics(self.model)
         result = []
         for batch_idx, sample in enumerate(self.loader):
@@ -122,6 +122,7 @@ class EvaluateQE:
                     steps=10,
                     lr=1e-1,
                     la=10,
+                    verbose=verbose,
                 )
                 all_attributions.append(layer_attributions.unsqueeze(-1))
             all_attributions = torch.cat(all_attributions, -1)  # B, T, L
