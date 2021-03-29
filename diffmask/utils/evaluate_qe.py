@@ -190,7 +190,7 @@ class EvaluateQE:
         print('Mean bad token attributions: {}'.format(np.mean(bad_attributions)))
 
     @staticmethod
-    def auc_score(data, random=False):
+    def auc_score(data, random=False, plot=False, save_plot=None):
         ys = []
         yhats = []
         for i, sample in enumerate(data):
@@ -203,8 +203,12 @@ class EvaluateQE:
                 yhats.append(attributions[idx])
         fpr, tpr, _ = roc_curve(ys, yhats)
         score = roc_auc_score(ys, yhats)
-        pyplot.plot(fpr, tpr)
-        pyplot.show()
+        if plot is not None:
+            pyplot.plot(fpr, tpr)
+            if save_plot is not None:
+                pyplot.savefig(save_plot)
+            else:
+                pyplot.show()
         print(score)
 
     @staticmethod
