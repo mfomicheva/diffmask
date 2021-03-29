@@ -23,7 +23,7 @@ def _get_color(attr):
     ]
 
 
-def print_attributions(tokens, attributions, labels=None, special=True):
+def print_attributions(tokens, attributions, labels=None, special=True, topk=None):
 
     if not special:
         attributions = torch.tensor(
@@ -40,7 +40,13 @@ def print_attributions(tokens, attributions, labels=None, special=True):
                 ]
             )
         )
-    _print(tokens, np.asarray(attributions) / max(attributions))
+    if topk:
+        threshold = sorted(attributions, reverse=True)[topk]
+        sparse_attributions = np.zeros(attributions.shape)
+        sparse_attributions[sparse_attributions > threshold] = 1
+        _print(tokens, sparse_attributions)
+    else:
+        _print(tokens, np.asarray(attributions) / max(attributions))
     if labels is not None:
         _print(tokens, labels)
 
