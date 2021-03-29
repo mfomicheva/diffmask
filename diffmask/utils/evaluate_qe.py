@@ -143,7 +143,7 @@ class EvaluateQE:
 
     def select_target_data(
             self, layer_id, ignore_correct_gold=True, ignore_correct_predicted=True, predictions=None,
-            regression_threshold=None
+            regression_threshold=None, silent=False,
     ):
         if layer_id != -1:
             assert layer_id in self.layer_indexes
@@ -174,15 +174,18 @@ class EvaluateQE:
             try:
                 sample.map_attributions()
             except ValueError:
-                print('BPE mapping error! Skipping...')
+                if not silent:
+                    print('BPE mapping error! Skipping...')
                 continue
             try:
                 assert len(sample.word_labels) == len(sample.target_token_attributions)
             except AssertionError:
-                print('Sequence too long. Skipping')
+                if not silent:
+                    print('Sequence too long. Skipping')
                 continue
             if len(sample.source_tokens) == 0 or len(sample.target_tokens) == 0 or len(sample.bpe_tokens) == 0:
-                print('Empty segment! Skipping...')
+                if not silent:
+                    print('Empty segment! Skipping...')
                 continue
             res.append(sample)
         return res
