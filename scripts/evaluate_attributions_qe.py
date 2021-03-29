@@ -33,6 +33,8 @@ if __name__ == '__main__':
     parser.add_argument("--val_loss", default="f1", choices=["f1", "mcc", "mse"])
     parser.add_argument("--num_labels", default=1, type=int)
     parser.add_argument("--num_layers", default=12, type=int)
+    parser.add_argument("--save", default=None, type=str)
+    parser.add_argument("--load", default=None, type=str)
 
     hparams = parser.parse_args()
     print(hparams)
@@ -65,11 +67,12 @@ if __name__ == '__main__':
 
     predictions = attributions_qe.generate_predictions(evaluate=True, regression=hparams.num_labels == 1)
 
-    attributions_qe.attribution_schulz()
+    attributions_qe.attribution_schulz(save=hparams.save, load=hparams.load)
 
     for layerid in range(hparams.num_layers):
         data = attributions_qe.select_target_data(
-            layerid, ignore_correct_gold=True, ignore_correct_predicted=True, predictions=predictions)
+            layerid, ignore_correct_gold=True, ignore_correct_predicted=True, predictions=predictions,
+        )
 
         print('Random')
         attributions_qe.top1_accuracy(data, random=True)

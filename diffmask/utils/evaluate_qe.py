@@ -1,5 +1,6 @@
 import torch
 import numpy as np
+import pickle
 
 from sklearn.metrics import roc_curve, roc_auc_score
 from scipy.stats import pearsonr
@@ -95,7 +96,12 @@ class EvaluateQE:
         self.dataset = self.model.test_dataset if split == 'test' else self.model.val_dataset
         self.attributions = None
 
-    def attribution_schulz(self, verbose=False):
+    def attribution_schulz(self, verbose=False, save=None, load=None):
+
+        if load is not None:
+            self.attributions = pickle.load(open(load, 'rb'))
+            return
+
         all_q_z_loc, all_q_z_scale = roberta_hidden_states_statistics(self.model)
         result = []
         for batch_idx, sample in enumerate(self.loader):
@@ -131,6 +137,8 @@ class EvaluateQE:
                     result.append(all_attributions[bidx, :, :])  # T, L
                 except IndexError:
                     break
+        if save is not None:
+            pickle.dump(result, open(save, 'wb'))
         self.attributions = result
 
     def select_target_data(self, layer_id, ignore_correct_gold=True, ignore_correct_predicted=True, predictions=None):
@@ -143,14 +151,22 @@ class EvaluateQE:
             bpe_tokens = self.model.tokenizer.convert_ids_to_tokens(input_ids.squeeze()[:mask.sum(-1).item()].squeeze())
             sent_pred = predictions[sentid] if predictions is not None else None
             bpe_attributions = self.attributions[sentid][:mask.sum(-1).item()].cpu()
-            if ignore_correct_gold and sent_labels.item() != 1:
-                continue
-            if ignore_correct_predicted and sent_pred is not None and sent_pred != 1:
-                continue
+
+            if self.model.hparams.num_labels > 1:
+                if ignore_correct_gold and sent_labels.item() != 1:
+                    continue
+                if ignore_correct_predicted and sent_pred is not None and sent_pred != 1:
+                    continue
+            else:
+                if ignore_correct_gold and sent_labels.item() < 0.2:
+                    continue
+                if ignore_correct_predicted and sent_pred is not None and sent_pred < 0.2:
+                    continue
             sample = SampleAttributions(
                 self.text_dataset[sentid][0].split(), self.text_dataset[sentid][1].split(), bpe_tokens,
                 bpe_attributions, self.text_dataset[sentid][3], sent_labels.item(), sent_pred, layer_id
             )
+
             try:
                 sample.map_attributions()
             except ValueError:
