@@ -161,7 +161,6 @@ class EvaluateQE:
                 if ignore_correct_predicted and sent_pred is not None and sent_pred != 1:
                     continue
             else:  # we are doing regression
-                assert regression_threshold is not None
                 if ignore_correct_gold and sent_labels.item() < regression_threshold:
                     continue
                 if ignore_correct_predicted and sent_pred is not None and sent_pred < regression_threshold:
