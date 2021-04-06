@@ -53,12 +53,14 @@ def print_attributions(tokens, attributions, labels=None, special=True, topk=Non
         _print(tokens, labels)
 
 
-def plot_sst_attributions(attributions, tokens, num_layers=14, name=None, save=False):
+def plot_sst_attributions(attributions, tokens, num_layers=14, name=None, save=False, normalized=False):
     fig = plt.figure(figsize=(9, len(tokens) / 3))
     fig.add_subplot(111, aspect=1.5)
     fig.patch.set_facecolor("white")
+    if not normalized:
+        attributions = attributions / attributions.abs().max(0, keepdim=True).values
     plt.pcolormesh(
-        (attributions / attributions.abs().max(0, keepdim=True).values).flip(0),
+        attributions.flip(0),
         edgecolors="k",
         linewidth=0.01,
     )

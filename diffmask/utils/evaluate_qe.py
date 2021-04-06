@@ -16,7 +16,7 @@ class SampleAttributions:
 
     def __init__(
             self, source_tokens, target_tokens, bpe_tokens, bpe_attributions, word_labels, sent_label,
-            sent_pred, layer_id
+            sent_pred, layer_id, normalize=False, invert=False,
     ):
         self.source_tokens = source_tokens
         self.target_tokens = target_tokens
@@ -30,6 +30,9 @@ class SampleAttributions:
         self.cls_idx = 0
         self.sep_idx = self.bpe_tokens.index('</s>')
         self.eos_idx = len(self.bpe_tokens) - 1
+
+        self.normalize = normalize
+        self.invert = invert
 
         self.bpe_attributions_layer = None
         self.source_token_attributions = None
@@ -58,6 +61,10 @@ class SampleAttributions:
             self.bpe_attributions_layer = torch.mean(self.bpe_attributions, dim=-1)
         else:
             self.bpe_attributions_layer = self.bpe_attributions[:, self.layer_id]
+        if self.normalize:
+            self.bpe_attributions_layer = self.bpe_attributions_layer / self.bpe_attributions_layer.abs().max(0, keepdim=True).values
+        if self.invert:
+            self.bpe_attributions_layer = 1. - self.bpe_attributions_layer
 
     def source_bpe_tokens(self):
         return self.bpe_tokens[1:self.sep_idx]
