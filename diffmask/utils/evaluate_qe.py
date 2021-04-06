@@ -109,6 +109,7 @@ class EvaluateQE:
         kwargs = self.explainer_loss(
             q_z_loc=all_q_z_loc[0].unsqueeze(0).to(self.device),
             q_z_scale=all_q_z_scale[0].unsqueeze(0).to(self.device),
+            verbose=verbose,
         )
 
         result = []
@@ -130,7 +131,6 @@ class EvaluateQE:
                     steps=10,
                     lr=1e-1,
                     la=10,
-                    verbose=verbose,
                     **kwargs,
                 )
                 all_attributions.append(layer_attributions.unsqueeze(-1))
