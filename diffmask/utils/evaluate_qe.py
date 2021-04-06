@@ -153,7 +153,7 @@ class EvaluateQE:
 
     def select_target_data(
             self, layer_id, ignore_correct_gold=True, ignore_correct_predicted=True, predictions=None,
-            regression_threshold=None, silent=False,
+            regression_threshold=None, silent=False, normalize=False, invert=False,
     ):
         if layer_id != -1:
             assert layer_id in self.layer_indexes
@@ -177,7 +177,8 @@ class EvaluateQE:
                     continue
             sample = SampleAttributions(
                 self.text_dataset[sentid][0].split(), self.text_dataset[sentid][1].split(), bpe_tokens,
-                bpe_attributions, self.text_dataset[sentid][3], sent_labels.item(), sent_pred, layer_id
+                bpe_attributions, self.text_dataset[sentid][3], sent_labels.item(), sent_pred, layer_id,
+                normalize=normalize, invert=invert
             )
 
             try:
