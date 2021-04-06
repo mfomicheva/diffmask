@@ -6,7 +6,8 @@ from sklearn.metrics import roc_curve, roc_auc_score
 from scipy.stats import pearsonr
 from matplotlib import pyplot
 
-from diffmask.attributions.schulz import schulz_explainer, roberta_hidden_states_statistics
+from diffmask.attributions.schulz import schulz_explainer, roberta_hidden_states_statistics, schulz_loss
+from diffmask.attributions.guan import guan_explainer, guan_loss
 from diffmask.utils.metrics import accuracy_precision_recall_f1, matthews_corr_coef
 from diffmask.utils.util import map_bpe_moses
 
@@ -83,7 +84,7 @@ class SampleAttributions:
 
 class EvaluateQE:
 
-    def __init__(self, model, getter, setter, layer_indexes, device, split='valid'):
+    def __init__(self, model, getter, setter, layer_indexes, device, split='valid', guan=False):
         self.model = model
         self.getter = getter
         self.setter = setter
@@ -95,14 +96,21 @@ class EvaluateQE:
         self.text_dataset = self.model.test_dataset_orig if split == 'test' else self.model.val_dataset_orig
         self.dataset = self.model.test_dataset if split == 'test' else self.model.val_dataset
         self.attributions = None
+        self.explainer_fn = guan_explainer if guan else schulz_explainer
+        self.explainer_loss = guan_loss if guan else schulz_loss
 
-    def attribution_schulz(self, verbose=False, save=None, load=None):
+    def make_attributions(self, verbose=False, save=None, load=None):
 
         if load is not None:
             self.attributions = pickle.load(open(load, 'rb'))
             return
 
         all_q_z_loc, all_q_z_scale = roberta_hidden_states_statistics(self.model)
+        kwargs = self.explainer_loss(
+            q_z_loc=all_q_z_loc[0].unsqueeze(0).to(self.device),
+            q_z_scale=all_q_z_scale[0].unsqueeze(0).to(self.device),
+        )
+
         result = []
         for batch_idx, sample in enumerate(self.loader):
             input_ids, mask, _, labels = sample
@@ -113,22 +121,17 @@ class EvaluateQE:
             }
             all_attributions = []
             for layer_idx in self.layer_indexes:
-                layer_attributions = schulz_explainer(
+                layer_attributions = self.explainer_fn(
                     self.model.net,
                     inputs_dict=inputs_dict,
                     getter=self.getter,
                     setter=self.setter,
-                    q_z_loc=all_q_z_loc[0].unsqueeze(0).to(self.device),
-                    q_z_scale=all_q_z_scale[0].unsqueeze(0).to(self.device),
-                    loss_fn=lambda outputs, hidden_states, inputs_dict: outputs[0],
-                    loss_kl_fn=lambda kl, inputs_dict: (kl * inputs_dict["attention_mask"])
-                        .mean(-1)
-                        .mean(-1),
                     hidden_state_idx=layer_idx,
                     steps=10,
                     lr=1e-1,
                     la=10,
                     verbose=verbose,
+                    **kwargs,
                 )
                 all_attributions.append(layer_attributions.unsqueeze(-1))
             all_attributions = torch.cat(all_attributions, -1)  # B, T, L

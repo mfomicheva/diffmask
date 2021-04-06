@@ -68,7 +68,7 @@ if __name__ == '__main__':
 
     predictions = attributions_qe.generate_predictions(evaluate=True, regression=hparams.num_labels == 1)
 
-    attributions_qe.attribution_schulz(save=hparams.save, load=hparams.load)
+    attributions_qe.make_attributions(save=hparams.save, load=hparams.load)
 
     for layerid in range(hparams.num_layers):
         data = attributions_qe.select_target_data(

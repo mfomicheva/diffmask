@@ -8,6 +8,16 @@ from ..utils.getter_setter import (
 )
 
 
+def guan_loss(**kwargs):
+    return {
+        "s_fn": lambda outputs, hidden_states: outputs[1:],
+        "loss_l2_fn": lambda s, inputs_dict: sum(s_i.sum(-1).mean(-1) for s_i in s),
+        "loss_h_fn": lambda h, inputs_dict: (h * inputs_dict["attention_mask"])
+        .sum(-1)
+        .mean(-1),
+    }
+
+
 def guan_explainer(
     model,
     inputs_dict,
