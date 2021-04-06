@@ -223,7 +223,7 @@ class EvaluateQE:
         print('Mean bad token attributions: {}'.format(np.mean(bad_attributions)))
 
     @staticmethod
-    def auc_score(data, random=False, plot=False, save_plot=None):
+    def auc_score(data, random=False, plot=False, save_plot=None, verbose=False):
         ys = []
         yhats = []
         for i, sample in enumerate(data):
@@ -236,16 +236,18 @@ class EvaluateQE:
                 yhats.append(attributions[idx])
         fpr, tpr, _ = roc_curve(ys, yhats)
         score = roc_auc_score(ys, yhats)
-        if plot is not None:
+        if plot:
             pyplot.plot(fpr, tpr)
             if save_plot is not None:
                 pyplot.savefig(save_plot)
             else:
                 pyplot.show()
-        print(score)
+        if verbose:
+            print('AUC score: {}'.format(score))
+        return score
 
     @staticmethod
-    def top1_accuracy(data, topk=1, random=False, ):
+    def top1_accuracy(data, topk=1, random=False, verbose=False):
         # data: output of self.select_target()
         total_by_sent = 0
         correct_by_sent = 0
@@ -260,9 +262,11 @@ class EvaluateQE:
             if any([idx in gold for idx in highest_attributions]):
                 correct_by_sent += 1
             total_by_sent += 1
-        print(correct_by_sent)
-        print(total_by_sent)
-        print('{:.3f}'.format(correct_by_sent / total_by_sent))
+        if verbose:
+            print('Sentence with correct detection: {}'.format(correct_by_sent))
+            print('Total sentences: {}'.format(total_by_sent))
+            print('Percentage: {:.3f}'.format(correct_by_sent / total_by_sent))
+        return correct_by_sent / total_by_sent
 
 
 def generate_predictions(model, loader, device, evaluate=False, regression=False):
