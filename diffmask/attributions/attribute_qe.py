@@ -156,7 +156,7 @@ class AttributeQE:
             input_ids, mask, _, sent_labels = self.dataset[sentid]
             bpe_tokens = self.model.tokenizer.convert_ids_to_tokens(input_ids.squeeze()[:mask.sum(-1).item()].squeeze())
             sent_pred = predictions[sentid] if predictions is not None else None
-            bpe_attributions = self.attributions[sentid][:mask.sum(-1).item()].cpu()
+            bpe_attributions = self.attributions[sentid][:mask.sum(-1).item()].cpu().detach().numpy()
             sample = SampleAttributions(
                 self.text_dataset[sentid][0].split(), self.text_dataset[sentid][1].split(), bpe_tokens,
                 bpe_attributions, self.text_dataset[sentid][3], sent_labels.item(), sent_pred, layer_id,
