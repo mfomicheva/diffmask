@@ -25,9 +25,9 @@ class EvaluateQE:
     def select_data_classification(data, positive_gold=False, positive_predicted=False, **kwargs):
         output = []
         for sample in data:
-            if positive_gold and data.sent_label != 1:
+            if positive_gold and sample.sent_label != 1:
                 continue
-            if positive_predicted and data.sent_pred != 1:
+            if positive_predicted and sample.sent_pred != 1:
                 continue
             output.append(sample)
         return output
