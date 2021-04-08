@@ -141,3 +141,18 @@ def plot_squad_attributions(
         plt.savefig(name, bbox_inches="tight", pad_inches=0)
     else:
         plt.show()
+
+
+def box_plot(xs, heights, xlabel=None, ylabel=None, save_plot=None):
+    plt.clf()
+    fig = plt.figure()
+    ax = fig.add_axes([0, 0, 1, 1])
+    ax.bar(xs, heights)
+    if xlabel:
+        plt.xlabel(xlabel)
+    if ylabel:
+        plt.ylabel(ylabel)
+    if save_plot is not None:
+        plt.savefig(save_plot)
+    else:
+        plt.show()

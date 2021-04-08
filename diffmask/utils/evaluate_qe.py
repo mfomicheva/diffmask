@@ -45,11 +45,17 @@ class EvaluateQE:
             tgt_attributions.append(summary_fn(sample.target_bpe_attributions()))
             special_attributions.append(summary_fn(sample.special_token_attributions))
             bad_attributions.append(summary_fn(sample.error_token_attributions))
-        print('All attributions: {:.4f}'.format(np.mean(all_attributions)))
-        print('Source attributions: {:.4f}'.format(np.mean(src_attributions)))
-        print('Target attributions: {:.4f}'.format(np.mean(tgt_attributions)))
-        print('Special token attributions: {:.4f}'.format(np.mean(special_attributions)))
-        print('Bad token attributions: {:.4f}'.format(np.mean(bad_attributions)))
+        res_all = np.mean(all_attributions)
+        res_src = np.mean(src_attributions)
+        res_tgt = np.mean(tgt_attributions)
+        res_spec = np.mean(special_attributions)
+        res_bad = np.mean(bad_attributions)
+        print('All attributions: {:.4f}'.format(res_all))
+        print('Source attributions: {:.4f}'.format(res_src))
+        print('Target attributions: {:.4f}'.format(res_tgt))
+        print('Special token attributions: {:.4f}'.format(res_spec))
+        print('Bad token attributions: {:.4f}'.format(res_bad))
+        return res_all, res_src, res_tgt, res_spec, res_bad
 
     @staticmethod
     def precision_recall_curve(ys, yhats):
@@ -57,12 +63,18 @@ class EvaluateQE:
         return rec, prec, _
 
     @staticmethod
-    def make_flat_data(data, random=False):
+    def make_flat_data(data, random=False, majority=False):
         ys = []
         yhats = []
+        constant = None
+        if majority:
+            constant = sum([sum(s.word_labels for s in data)])/sum([len(s.word_labels) for s in data])
         for i, sample in enumerate(data):
             if random:
-                attributions = torch.rand((len(sample.target_token_attributions),)).tolist()
+                if constant is not None:
+                    attributions = torch.full((len(sample.target_token_attributions),), constant).tolist()
+                else:
+                    attributions = torch.rand((len(sample.target_token_attributions),)).tolist()
             else:
                 attributions = sample.target_token_attributions
             for idx, val in enumerate(sample.word_labels):
