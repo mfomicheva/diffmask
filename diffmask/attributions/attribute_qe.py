@@ -162,7 +162,10 @@ class AttributeQE:
                 bpe_attributions, self.text_dataset[sentid][3], sent_labels.item(), sent_pred, layer_id,
                 normalize=normalize, invert=invert
             )
-
+            if len(sample.source_tokens) == 0 or len(sample.target_tokens) == 0 or len(sample.bpe_tokens) == 0:
+                if not silent:
+                    print('Empty segment! Skipping...')
+                continue
             try:
                 sample.map_attributions()
             except ValueError:
@@ -174,10 +177,6 @@ class AttributeQE:
             except AssertionError:
                 if not silent:
                     print('Sequence too long. Skipping')
-                continue
-            if len(sample.source_tokens) == 0 or len(sample.target_tokens) == 0 or len(sample.bpe_tokens) == 0:
-                if not silent:
-                    print('Empty segment! Skipping...')
                 continue
             res.append(sample)
         return res
