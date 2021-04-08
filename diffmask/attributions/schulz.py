@@ -11,7 +11,7 @@ from ..utils.getter_setter import (
 )
 
 
-def schulz_loss(q_z_loc=None, q_z_scale=None):
+def schulz_loss(q_z_loc=None, q_z_scale=None, **kwargs):
     return {
         "q_z_loc": q_z_loc,
         "q_z_scale": q_z_scale[0],
