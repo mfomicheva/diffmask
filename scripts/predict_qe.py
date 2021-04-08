@@ -2,7 +2,7 @@ import os
 import argparse
 
 from diffmask.models.quality_estimation import QualityEstimationBinaryClassification, QualityEstimationRegression
-from diffmask.utils.evaluate_qe import generate_predictions
+from diffmask.utils.evaluate_qe import EvaluateQE
 
 
 if __name__ == '__main__':
@@ -45,7 +45,7 @@ if __name__ == '__main__':
     qe.freeze()
     qe.prepare_data()
     loader = qe.test_dataloader()
-    predictions = generate_predictions(qe, loader, device, evaluate=True, regression=hparams.num_labels == 1)
+    predictions = EvaluateQE.generate_predictions(qe, loader, device, evaluate=True, regression=hparams.num_labels == 1)
     if hparams.save_path is not None:
         with open(hparams.save_path, 'w') as o:
             for p in predictions:

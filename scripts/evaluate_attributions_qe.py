@@ -1,11 +1,12 @@
 import os
 import argparse
+import numpy as np
 import pytorch_lightning as pl
 
 from diffmask.models.quality_estimation import QualityEstimationBinaryClassification, QualityEstimationRegression
 from diffmask.utils.evaluate_qe import EvaluateQE
-from diffmask.attributions.schulz import roberta_hidden_states_statistics, schulz_explainer
 from diffmask.utils.getter_setter import roberta_getter, roberta_setter
+from diffmask.attributions.attribute_qe import AttributeQE
 
 
 if __name__ == '__main__':
@@ -63,24 +64,22 @@ if __name__ == '__main__':
     qe.prepare_data()
 
     layer_indexes = list(range(hparams.num_layers))
-    attributions_split = 'test' if hparams.src_test_filename is not None else 'valid'
-    attributions_qe = EvaluateQE(qe, roberta_getter, roberta_setter, layer_indexes, device, split=attributions_split)
-
-    predictions = attributions_qe.generate_predictions(evaluate=True, regression=hparams.num_labels == 1)
-
-    attributions_qe.make_attributions(save=hparams.save, load=hparams.load)
+    split = 'test' if hparams.src_test_filename is not None else 'valid'
+    loader = qe.test_dataloader() if split == 'test' else qe.val_dataloader()
+    predictions = EvaluateQE.generate_predictions(qe, loader, device, evaluate=True, regression=hparams.num_labels == 1)
+    attribute_qe = AttributeQE(qe, roberta_getter, roberta_setter, layer_indexes, device, split=split)
+    attribute_qe.make_attributions(save=hparams.save, load=hparams.load)
 
     for layerid in range(hparams.num_layers):
-        data = attributions_qe.select_target_data(
-            layerid, ignore_correct_gold=True, ignore_correct_predicted=True, predictions=predictions,
-            regression_threshold=hparams.regression_threshold
-        )
+        data = attribute_qe.make_data(layerid)
+        select_fn = EvaluateQE.select_data_regression if hparams.num_labels == 1 else EvaluateQE.select_data_classification
+        data = select_fn(data)  # TODO: pass kwargs
 
-        print('Random')
-        attributions_qe.top1_accuracy(data, random=True)
-        attributions_qe.auc_score(data, random=True)
+        print('Top1 accuracy')
+        EvaluateQE.top1_accuracy(data, random=True)
+        EvaluateQE.top1_accuracy(data)
 
-        print('Test layer {}'.format(layerid))
-        attributions_qe.top1_accuracy(data)
-        attributions_qe.auc_score(data)
-        attributions_qe.attributions_types(data)
+        print('AUC score')
+        EvaluateQE().auc_score(data)
+        EvaluateQE.attributions_types(data, np.mean)
+        EvaluateQE.attributions_types(data, np.var)
