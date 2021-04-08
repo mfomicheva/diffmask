@@ -52,6 +52,11 @@ class EvaluateQE:
         print('Bad token attributions: {:.4f}'.format(np.mean(bad_attributions)))
 
     @staticmethod
+    def precision_recall_curve(ys, yhats):
+        prec, rec, _ = precision_recall_curve(ys, yhats)
+        return rec, prec, _
+
+    @staticmethod
     def make_flat_data(data, random=False):
         ys = []
         yhats = []
@@ -73,7 +78,7 @@ class EvaluateQE:
 
     def auc_score(self, data, plot=False, save_plot=None, verbose=False, auprc=False):
         if auprc:
-            curve_fn = precision_recall_curve
+            curve_fn = self.precision_recall_curve
             score_fn = average_precision_score
         else:
             curve_fn = roc_curve
