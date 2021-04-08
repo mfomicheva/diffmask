@@ -80,9 +80,13 @@ class EvaluateQE:
         if auprc:
             curve_fn = self.precision_recall_curve
             score_fn = average_precision_score
+            x_label = 'Recall'
+            y_label = 'Precision'
         else:
             curve_fn = roc_curve
             score_fn = roc_auc_score
+            x_label = 'False Positive Rate'
+            y_label = 'True Positive Rate'
         ys, yhats = self.make_flat_data(data)
         _, yhats_random = self.make_flat_data(data, random=True)
         x, y, score = self.make_curve(ys, yhats, curve_fn, score_fn)
@@ -90,6 +94,8 @@ class EvaluateQE:
         if plot:
             pyplot.plot(x, y)
             pyplot.plot(x_rand, y_rand, linestyle='--', color='black')
+            pyplot.xlabel(x_label)
+            pyplot.ylabel(y_label)
             if save_plot is not None:
                 pyplot.savefig(save_plot)
             else:
