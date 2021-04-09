@@ -102,13 +102,13 @@ class AttributeQE:
         self.explainer_fn = guan_explainer if guan else schulz_explainer
         self.explainer_loss = guan_loss if guan else schulz_loss
 
-    def make_attributions(self, verbose=False, save=None, load=None):
+    def make_attributions(self, verbose=False, save=None, load=None, input_only=True):
 
         if load is not None:
             self.attributions = pickle.load(open(load, 'rb'))
             return
 
-        all_q_z_loc, all_q_z_scale = roberta_hidden_states_statistics(self.model)
+        all_q_z_loc, all_q_z_scale = roberta_hidden_states_statistics(self.model, input_only=input_only)
         kwargs = self.explainer_loss(
             q_z_loc=all_q_z_loc[0].unsqueeze(0).to(self.device),
             q_z_scale=all_q_z_scale[0].unsqueeze(0).to(self.device),
