@@ -68,7 +68,7 @@ class EvaluateQE:
         yhats = []
         constant = None
         if majority:
-            constant = sum([sum(s.word_labels for s in data)])/sum([len(s.word_labels) for s in data])
+            constant = sum([sum(s.word_labels) for s in data])/sum([len(s.word_labels) for s in data])
         for i, sample in enumerate(data):
             if random:
                 if constant is not None:
