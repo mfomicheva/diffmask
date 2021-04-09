@@ -147,7 +147,7 @@ class QualityEstimation(pl.LightningModule):
 
         logits = self.forward(input_ids, mask)[0]
         loss = self.loss(logits, labels)
-        outputs_dict = self.compute_metrics(logits.argmax(-1), labels, loss)
+        outputs_dict = self.compute_metrics(logits, labels, loss)
 
         outputs_dict = {
             "loss": loss,
