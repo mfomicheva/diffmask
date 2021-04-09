@@ -88,7 +88,7 @@ class EvaluateQE:
         score = scoring_fn(ys, yhats)
         return x, y, score
 
-    def auc_score(self, data, plot=False, save_plot=None, verbose=False, auprc=False):
+    def auc_score(self, data, plot=False, save_plot=None, verbose=False, auprc=False, random_majority=False):
         if auprc:
             curve_fn = self.precision_recall_curve
             score_fn = average_precision_score
@@ -100,7 +100,7 @@ class EvaluateQE:
             x_label = 'False Positive Rate'
             y_label = 'True Positive Rate'
         ys, yhats = self.make_flat_data(data)
-        _, yhats_random = self.make_flat_data(data, random=True)
+        _, yhats_random = self.make_flat_data(data, random=True, majority=random_majority)
         x, y, score = self.make_curve(ys, yhats, curve_fn, score_fn)
         x_rand, y_rand, score_rand = self.make_curve(ys, yhats_random, curve_fn, score_fn)
         if plot:
