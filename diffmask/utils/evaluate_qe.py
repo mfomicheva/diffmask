@@ -66,7 +66,7 @@ class EvaluateQE:
         print('Special token attributions: {:.4f}'.format(res_spec))
         print('CLS token attributions: {:.4f}'.format(res_cls))
         print('Bad token attributions: {:.4f}'.format(res_bad))
-        return res_all, res_src, res_tgt, res_spec, res_bad
+        return res_all, res_src, res_tgt, res_bad, res_spec, res_cls
 
     @staticmethod
     def precision_recall_curve(ys, yhats):
