@@ -46,21 +46,25 @@ class EvaluateQE:
         tgt_attributions = []
         special_attributions = []
         bad_attributions = []
+        cls_attributions = []
         for sample in data:
             all_attributions.append(summary_fn(sample.bpe_attributions_layer))
             src_attributions.append(summary_fn(sample.source_bpe_attributions()))
             tgt_attributions.append(summary_fn(sample.target_bpe_attributions()))
             special_attributions.append(summary_fn(sample.special_token_attributions))
+            cls_attributions.append(summary_fn(sample.special_token_attributions[0]))
             bad_attributions.append(summary_fn(sample.error_token_attributions))
         res_all = np.mean(all_attributions)
         res_src = np.mean(src_attributions)
         res_tgt = np.mean(tgt_attributions)
         res_spec = np.mean(special_attributions)
+        res_cls = np.mean(cls_attributions)
         res_bad = np.mean(bad_attributions)
         print('All attributions: {:.4f}'.format(res_all))
         print('Source attributions: {:.4f}'.format(res_src))
         print('Target attributions: {:.4f}'.format(res_tgt))
         print('Special token attributions: {:.4f}'.format(res_spec))
+        print('CLS token attributions: {:.4f}'.format(res_cls))
         print('Bad token attributions: {:.4f}'.format(res_bad))
         return res_all, res_src, res_tgt, res_spec, res_bad
 
