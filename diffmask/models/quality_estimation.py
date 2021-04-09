@@ -223,7 +223,7 @@ class QualityEstimationBinaryClassification(QualityEstimation):
         return loss
 
     @staticmethod
-    def compute_metrics(logits, labels):
+    def compute_metrics(logits, labels, loss):
         acc, _, _, f1 = accuracy_precision_recall_f1(logits.argmax(-1), labels, average=True)
         mcc = matthews_corr_coef(logits.argmax(-1), labels)
         outputs_dict = {
