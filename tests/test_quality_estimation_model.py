@@ -2,9 +2,14 @@ import unittest
 import os
 import tempfile
 
+import pytorch_lightning as pl
 from transformers import XLMRobertaTokenizer
 
 from diffmask.models.quality_estimation import load_sent_level
+from diffmask.models.quality_estimation import QualityEstimationRegression
+from diffmask.models.quality_estimation import QualityEstimationBinaryClassification
+from diffmask.options import make_parser
+
 from tests.util import create_dummy_data
 
 
@@ -26,3 +31,62 @@ class TestQualityEstimationModel(unittest.TestCase):
             assert dataset[0][1][0].shape[0] == 128
             assert sum(dataset[0][1][1]).item() == 20
             assert dataset[0][1][2].item() == 0
+
+    def _make_hparams(self, data_dir, target_only=False):
+        parser = make_parser()
+        parser.parse_known_args()
+        input_args = [
+            '--model', 'xlm-roberta-base',
+            '--src_train_filename', os.path.join(data_dir, 'train.src'),
+            '--tgt_train_filename', os.path.join(data_dir, 'train.tgt'),
+            '--labels_train_filename', os.path.join(data_dir, 'train.labels'),
+            '--word_labels_train_filename', os.path.join(data_dir, 'train.tags'),
+            '--src_val_filename', os.path.join(data_dir, 'valid.src'),
+            '--tgt_val_filename', os.path.join(data_dir, 'valid.tgt'),
+            '--labels_val_filename', os.path.join(data_dir, 'valid.labels'),
+            '--word_labels_val_filename', os.path.join(data_dir, 'valid.tags'),
+            '--model_path', os.path.join(data_dir),
+            '--epochs', '1',
+        ]
+        if target_only:
+            input_args.append('--target_only')
+        return parser.parse_args(input_args)
+
+    def _train_model(self, data_dir, hparams):
+        create_dummy_data(data_dir, 'train', num_examples=50)
+        create_dummy_data(data_dir, 'valid', num_examples=10)
+        checkpoint_callback = pl.callbacks.ModelCheckpoint(
+            filepath=hparams.model_path,
+            save_top_k=1,
+            verbose=True,
+            monitor='val_loss',
+        )
+        if hparams.num_labels == 1:
+            qe = QualityEstimationRegression(hparams)
+        elif hparams.num_labels == 2:
+            qe = QualityEstimationBinaryClassification(hparams)
+        else:
+            raise NotImplementedError
+
+        trainer = pl.Trainer(
+            gpus=int(hparams.use_cuda),
+            progress_bar_refresh_rate=0,
+            max_epochs=hparams.epochs,
+            check_val_every_n_epoch=1,
+            logger=pl.loggers.TensorBoardLogger("outputs", name="qe"),
+            checkpoint_callback=checkpoint_callback,
+        )
+        trainer.fit(qe)
+        print(checkpoint_callback.format_checkpoint_name(1, {}))
+
+    def test_train_model(self):
+        with tempfile.TemporaryDirectory("test_prepare_data") as data_dir:
+            hparams = self._make_hparams(data_dir)
+            self._train_model(data_dir, hparams)
+            assert 'epoch=0.ckpt' in os.listdir(data_dir)
+
+    def test_train_model_target_only(self):
+        with tempfile.TemporaryDirectory("test_prepare_data") as data_dir:
+            hparams = self._make_hparams(data_dir, target_only=True)
+            self._train_model(data_dir, hparams)
+            assert 'epoch=0.ckpt' in os.listdir(data_dir)
