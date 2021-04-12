@@ -75,17 +75,20 @@ class QualityEstimation(pl.LightningModule):
         if self.hparams.src_train_filename is not None:
             self.train_dataset, self.train_dataset_orig = load_sent_level(
                 self.hparams.src_train_filename, self.hparams.tgt_train_filename, self.hparams.labels_train_filename,
-                self.tokenizer, path_word_labels=self.hparams.word_labels_train_filename, regression=self.regression
+                self.tokenizer, path_word_labels=self.hparams.word_labels_train_filename, regression=self.regression,
+                target_only=self.hparams.target_only
             )
         if self.hparams.src_val_filename is not None:
             self.val_dataset, self.val_dataset_orig = load_sent_level(
                 self.hparams.src_val_filename, self.hparams.tgt_val_filename, self.hparams.labels_val_filename,
-                self.tokenizer, path_word_labels=self.hparams.word_labels_val_filename, regression=self.regression
+                self.tokenizer, path_word_labels=self.hparams.word_labels_val_filename, regression=self.regression,
+                target_only=self.hparams.target_only
             )
         if self.hparams.src_test_filename is not None:
             self.test_dataset, self.test_dataset_orig = load_sent_level(
                 self.hparams.src_test_filename, self.hparams.tgt_test_filename, self.hparams.labels_test_filename,
-                self.tokenizer, path_word_labels=self.hparams.word_labels_test_filename, regression=self.regression
+                self.tokenizer, path_word_labels=self.hparams.word_labels_test_filename, regression=self.regression,
+                target_only=self.hparams.target_only
             )
 
     def make_sampler(self):

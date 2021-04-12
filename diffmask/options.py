@@ -1,11 +1,7 @@
-import os
 import argparse
-import pytorch_lightning as pl
-
-from diffmask.models.quality_estimation import QualityEstimationBinaryClassification, QualityEstimationRegression
 
 
-if __name__ == '__main__':
+def make_parser():
     parser = argparse.ArgumentParser()
     parser.add_argument("--use_cuda", action='store_true', default=False)
     parser.add_argument("--model", type=str, default="xlm-roberta-base")
@@ -29,31 +25,5 @@ if __name__ == '__main__':
     parser.add_argument("--class_weighting", default=False, action='store_true')
     parser.add_argument("--val_loss", default="f1", choices=["f1", "mcc", "mse"])
     parser.add_argument("--num_labels", default=2, type=int)
-
-    hparams = parser.parse_args()
-    print(hparams)
-
-    checkpoint_callback = pl.callbacks.ModelCheckpoint(
-        filepath=hparams.model_path,
-        save_top_k=1,
-        verbose=True,
-        monitor='val_loss',
-    )
-
-    assert not os.path.exists(hparams.model_path)
-    if hparams.num_labels == 1:
-        qe = QualityEstimationRegression(hparams)
-    elif hparams.num_labels == 2:
-        qe = QualityEstimationBinaryClassification(hparams)
-    else:
-        raise NotImplementedError
-
-    trainer = pl.Trainer(
-        gpus=int(hparams.use_cuda),
-        progress_bar_refresh_rate=0,
-        max_epochs=hparams.epochs,
-        check_val_every_n_epoch=1,
-        logger=pl.loggers.TensorBoardLogger("outputs", name="qe"),
-        checkpoint_callback=checkpoint_callback,
-    )
-    trainer.fit(qe)
+    parser.add_argument("--target_only", action='store_true', default=False)
+    return parser
