@@ -14,7 +14,7 @@ from ..utils.getter_setter import (
 def schulz_loss(q_z_loc=None, q_z_scale=None, **kwargs):
     return {
         "q_z_loc": q_z_loc,
-        "q_z_scale": q_z_scale[0],
+        "q_z_scale": q_z_scale,
         "loss_fn": lambda outputs, hidden_states, inputs_dict: outputs[0],
         "loss_kl_fn": lambda kl, inputs_dict: (kl * inputs_dict["attention_mask"])
         .mean(-1)
