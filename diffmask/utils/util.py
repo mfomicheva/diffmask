@@ -48,3 +48,22 @@ def map_bpe_moses(bpe_tokens, moses_tokens):  # all special tokens need to be pr
     for tok_idx_bpe, tok_idx_moses in mapping.items():
         moses_to_bpe[tok_idx_moses].append(tok_idx_bpe)
     return bpe_to_moses, moses_to_bpe
+
+
+def map_bpe_moses_bert(bpe_tokens, moses_tokens):
+    tok_idx_bpe = 0
+    tok_idx_moses = 0
+    mapping = dict()
+    for i in range(len(bpe_tokens)):
+        if i == len(bpe_tokens) - 1:
+            mapping[tok_idx_bpe] = tok_idx_moses
+            break
+        mapping[tok_idx_bpe] = tok_idx_moses
+        if "##" not in bpe_tokens[i + 1]:
+            tok_idx_moses += 1
+        tok_idx_bpe += 1
+    bpe_to_moses = mapping
+    moses_to_bpe = defaultdict(list)
+    for tok_idx_bpe, tok_idx_moses in mapping.items():
+        moses_to_bpe[tok_idx_moses].append(tok_idx_bpe)
+    return bpe_to_moses, moses_to_bpe

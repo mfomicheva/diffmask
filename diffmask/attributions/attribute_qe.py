@@ -3,7 +3,7 @@ import pickle
 
 from diffmask.attributions.schulz import schulz_explainer, hidden_states_statistics, schulz_loss
 from diffmask.attributions.guan import guan_explainer, guan_loss
-from diffmask.utils.util import map_bpe_moses
+from diffmask.utils.util import map_bpe_moses, map_bpe_moses_bert
 
 # TODO: map to source/target/special at the data preparation stage
 
@@ -12,7 +12,7 @@ class SampleAttributions:
 
     def __init__(
             self, source_tokens, target_tokens, bpe_tokens, bpe_attributions, word_labels, sent_label,
-            sent_pred, layer_id, normalize=False, invert=False, sep_token='</s>'
+            sent_pred, layer_id, normalize=False, invert=False, sep_token='</s>', token_mapper_fn=map_bpe_moses,
     ):
         self.source_tokens = source_tokens
         self.target_tokens = target_tokens
@@ -22,6 +22,8 @@ class SampleAttributions:
         self.sent_label = sent_label
         self.sent_pred = sent_pred
         self.layer_id = layer_id
+
+        self.token_mappper_fn = token_mapper_fn
 
         self.cls_idx = 0
         self.sep_idx = self.bpe_tokens.index(sep_token)
@@ -40,8 +42,8 @@ class SampleAttributions:
 
     def map_attributions(self):
         try:
-            src_bpe_moses, src_moses_bpe = map_bpe_moses(self.source_bpe_tokens(), self.source_tokens)
-            tgt_bpe_moses, tgt_moses_bpe = map_bpe_moses(self.target_bpe_tokens(), self.target_tokens)
+            src_bpe_moses, src_moses_bpe = self.token_mappper_fn(self.source_bpe_tokens(), self.source_tokens)
+            tgt_bpe_moses, tgt_moses_bpe = self.token_mappper_fn(self.target_bpe_tokens(), self.target_tokens)
         except ValueError:
             raise
         self.set_layer_bpe_attributions()
@@ -153,6 +155,7 @@ class AttributeQE:
             layer_id = self.layer_indexes.index(layer_id)
         res = []
         sep_token = '</s>' if self.model.hparams.architecture == 'roberta' else '[SEP]'
+        tokens_mapper_fn = map_bpe_moses if self.model.hparams.architecture == 'roberta' else map_bpe_moses_bert
         for sentid in range(len(self.attributions)):
             input_ids, mask, sent_labels = self.dataset[sentid]
             bpe_tokens = self.model.tokenizer.convert_ids_to_tokens(input_ids.squeeze()[:mask.sum(-1).item()].squeeze())
@@ -161,7 +164,7 @@ class AttributeQE:
             sample = SampleAttributions(
                 self.text_dataset[sentid][0].split(), self.text_dataset[sentid][1].split(), bpe_tokens,
                 bpe_attributions, self.text_dataset[sentid][3], sent_labels.item(), sent_pred, layer_id,
-                normalize=normalize, invert=invert, sep_token=sep_token
+                normalize=normalize, invert=invert, sep_token=sep_token, token_mapper_fn=tokens_mapper_fn
             )
             if len(sample.source_tokens) == 0 or len(sample.target_tokens) == 0 or len(sample.bpe_tokens) == 0:
                 if not silent:
