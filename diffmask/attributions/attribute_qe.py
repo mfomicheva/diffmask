@@ -12,7 +12,7 @@ class SampleAttributions:
 
     def __init__(
             self, source_tokens, target_tokens, bpe_tokens, bpe_attributions, word_labels, sent_label,
-            sent_pred, layer_id, normalize=False, invert=False,
+            sent_pred, layer_id, normalize=False, invert=False, sep_token='</s>'
     ):
         self.source_tokens = source_tokens
         self.target_tokens = target_tokens
@@ -24,7 +24,7 @@ class SampleAttributions:
         self.layer_id = layer_id
 
         self.cls_idx = 0
-        self.sep_idx = self.bpe_tokens.index('</s>')
+        self.sep_idx = self.bpe_tokens.index(sep_token)
         self.eos_idx = len(self.bpe_tokens) - 1
 
         self.normalize = normalize
@@ -152,6 +152,7 @@ class AttributeQE:
             assert layer_id in self.layer_indexes
             layer_id = self.layer_indexes.index(layer_id)
         res = []
+        sep_token = '</s>' if self.model.hparams.architecture == 'roberta' else '[SEP]'
         for sentid in range(len(self.attributions)):
             input_ids, mask, sent_labels = self.dataset[sentid]
             bpe_tokens = self.model.tokenizer.convert_ids_to_tokens(input_ids.squeeze()[:mask.sum(-1).item()].squeeze())
@@ -160,7 +161,7 @@ class AttributeQE:
             sample = SampleAttributions(
                 self.text_dataset[sentid][0].split(), self.text_dataset[sentid][1].split(), bpe_tokens,
                 bpe_attributions, self.text_dataset[sentid][3], sent_labels.item(), sent_pred, layer_id,
-                normalize=normalize, invert=invert
+                normalize=normalize, invert=invert, sep_token=sep_token
             )
             if len(sample.source_tokens) == 0 or len(sample.target_tokens) == 0 or len(sample.bpe_tokens) == 0:
                 if not silent:
