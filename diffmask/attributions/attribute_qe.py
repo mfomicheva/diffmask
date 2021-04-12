@@ -119,9 +119,10 @@ class AttributeQE:
             }
             all_attributions = []
             for layer_idx in self.layer_indexes:
+                all_q_z_idx = 0 if input_only else layer_idx
                 kwargs = self.explainer_loss(
-                    q_z_loc=all_q_z_loc[layer_idx].unsqueeze(0).to(self.device),
-                    q_z_scale=all_q_z_scale[layer_idx].unsqueeze(0).to(self.device),
+                    q_z_loc=all_q_z_loc[all_q_z_idx].unsqueeze(0).to(self.device),
+                    q_z_scale=all_q_z_scale[all_q_z_idx].unsqueeze(0).to(self.device),
                     verbose=verbose,
                 )
                 layer_attributions = self.explainer_fn(
