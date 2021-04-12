@@ -155,7 +155,7 @@ class EvaluateQE:
         all_predictions = []
         all_labels = []
         for batch_idx, sample in enumerate(loader):
-            input_ids, mask, _, labels = sample
+            input_ids, mask, labels = sample
             inputs_dict = {
                 'input_ids': input_ids.to(device),
                 'mask': mask.to(device),
