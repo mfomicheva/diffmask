@@ -7,7 +7,7 @@ from diffmask.models.quality_estimation import QualityEstimationBinaryClassifica
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument("--gpu", type=str, default="0")
+    parser.add_argument("--use_cuda", action='store_true', default=False)
     parser.add_argument("--model", type=str, default="xlm-roberta-base")
     parser.add_argument("--src_train_filename", type=str)
     parser.add_argument("--tgt_train_filename", type=str)
@@ -32,7 +32,6 @@ if __name__ == '__main__':
 
     hparams = parser.parse_args()
     print(hparams)
-    os.environ["CUDA_VISIBLE_DEVICES"] = hparams.gpu
 
     checkpoint_callback = pl.callbacks.ModelCheckpoint(
         filepath=hparams.model_path,
@@ -50,7 +49,7 @@ if __name__ == '__main__':
         raise NotImplementedError
 
     trainer = pl.Trainer(
-        gpus=int(hparams.gpu != ""),
+        gpus=int(hparams.use_cuda),
         progress_bar_refresh_rate=0,
         max_epochs=hparams.epochs,
         check_val_every_n_epoch=1,
