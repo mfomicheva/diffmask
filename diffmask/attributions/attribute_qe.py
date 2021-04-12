@@ -117,7 +117,7 @@ class AttributeQE:
 
         result = []
         for batch_idx, sample in enumerate(self.loader):
-            input_ids, mask, _, labels = sample
+            input_ids, mask, labels = sample
             inputs_dict = {
                 'input_ids': input_ids.to(self.device),
                 'attention_mask': mask.to(self.device),
@@ -153,7 +153,7 @@ class AttributeQE:
             layer_id = self.layer_indexes.index(layer_id)
         res = []
         for sentid in range(len(self.attributions)):
-            input_ids, mask, _, sent_labels = self.dataset[sentid]
+            input_ids, mask, sent_labels = self.dataset[sentid]
             bpe_tokens = self.model.tokenizer.convert_ids_to_tokens(input_ids.squeeze()[:mask.sum(-1).item()].squeeze())
             sent_pred = predictions[sentid] if predictions is not None else None
             bpe_attributions = self.attributions[sentid][:mask.sum(-1).item()].cpu()
