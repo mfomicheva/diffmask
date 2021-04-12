@@ -1,7 +1,7 @@
 import torch
 import pickle
 
-from diffmask.attributions.schulz import schulz_explainer, roberta_hidden_states_statistics, schulz_loss
+from diffmask.attributions.schulz import schulz_explainer, hidden_states_statistics, schulz_loss
 from diffmask.attributions.guan import guan_explainer, guan_loss
 from diffmask.utils.util import map_bpe_moses
 
@@ -108,7 +108,7 @@ class AttributeQE:
             self.attributions = pickle.load(open(load, 'rb'))
             return
 
-        all_q_z_loc, all_q_z_scale = roberta_hidden_states_statistics(self.model, input_only=input_only)
+        all_q_z_loc, all_q_z_scale = hidden_states_statistics(self.model, self.model.net, self.getter, input_only=input_only)
         result = []
         for batch_idx, sample in enumerate(self.loader):
             input_ids, mask, labels = sample

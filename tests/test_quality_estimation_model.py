@@ -7,7 +7,8 @@ from transformers import XLMRobertaTokenizer
 
 from diffmask.models.quality_estimation import load_sent_level
 from diffmask.models.quality_estimation import QualityEstimationRegression
-from diffmask.models.quality_estimation import QualityEstimationBinaryClassification
+from diffmask.models.quality_estimation import QualityEstimationBinaryClassificationRoberta
+from diffmask.models.quality_estimation import QualityEstimationBinaryClassificationBert
 from diffmask.options import make_parser
 
 from tests.util import create_dummy_data
@@ -32,11 +33,12 @@ class TestQualityEstimationModel(unittest.TestCase):
             assert sum(dataset[0][1][1]).item() == 20
             assert dataset[0][1][2].item() == 0
 
-    def _make_hparams(self, data_dir, target_only=False):
+    def _make_hparams(self, data_dir, architecture, pretrained_model_name, target_only=False):
         parser = make_parser()
         parser.parse_known_args()
         input_args = [
-            '--model', 'xlm-roberta-base',
+            '--architecture', architecture,
+            '--model', pretrained_model_name,
             '--src_train_filename', os.path.join(data_dir, 'train.src'),
             '--tgt_train_filename', os.path.join(data_dir, 'train.tgt'),
             '--labels_train_filename', os.path.join(data_dir, 'train.labels'),
@@ -64,7 +66,12 @@ class TestQualityEstimationModel(unittest.TestCase):
         if hparams.num_labels == 1:
             qe = QualityEstimationRegression(hparams)
         elif hparams.num_labels == 2:
-            qe = QualityEstimationBinaryClassification(hparams)
+            if hparams.architecture == 'roberta':
+                qe = QualityEstimationBinaryClassificationRoberta(hparams)
+            elif hparams.architecture == 'bert':
+                qe = QualityEstimationBinaryClassificationBert(hparams)
+            else:
+                raise ValueError
         else:
             raise NotImplementedError
 
@@ -81,12 +88,18 @@ class TestQualityEstimationModel(unittest.TestCase):
 
     def test_train_model(self):
         with tempfile.TemporaryDirectory("test_prepare_data") as data_dir:
-            hparams = self._make_hparams(data_dir)
+            hparams = self._make_hparams(data_dir, 'roberta', 'xlm-roberta-base')
+            self._train_model(data_dir, hparams)
+            assert 'epoch=0.ckpt' in os.listdir(data_dir)
+
+    def test_train_model_bert(self):
+        with tempfile.TemporaryDirectory("test_prepare_data") as data_dir:
+            hparams = self._make_hparams(data_dir, 'bert', 'bert-base-multilingual-cased')
             self._train_model(data_dir, hparams)
             assert 'epoch=0.ckpt' in os.listdir(data_dir)
 
     def test_train_model_target_only(self):
         with tempfile.TemporaryDirectory("test_prepare_data") as data_dir:
-            hparams = self._make_hparams(data_dir, target_only=True)
+            hparams = self._make_hparams(data_dir, 'roberta', 'xlm-roberta-base', target_only=True)
             self._train_model(data_dir, hparams)
             assert 'epoch=0.ckpt' in os.listdir(data_dir)

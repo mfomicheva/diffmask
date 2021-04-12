@@ -6,6 +6,9 @@ from transformers import (
     XLMRobertaTokenizer,
     XLMRobertaForSequenceClassification,
     XLMRobertaConfig,
+    BertTokenizer,
+    BertForSequenceClassification,
+    BertConfig,
     get_constant_schedule_with_warmup,
 )
 
@@ -63,7 +66,6 @@ class QualityEstimation(pl.LightningModule):
     def __init__(self, hparams):
         super().__init__()
         self.hparams = hparams
-        self.tokenizer = XLMRobertaTokenizer.from_pretrained(self.hparams.model)
         self.train_dataset = None
         self.train_dataset_orig = None
         self.val_dataset = None
@@ -71,6 +73,7 @@ class QualityEstimation(pl.LightningModule):
         self.test_dataset = None
         self.test_dataset_orig = None
         self.regression = False
+        self.tokenizer = None
 
     def prepare_data(self):
         if self.hparams.src_train_filename is not None:
@@ -182,16 +185,6 @@ class QualityEstimation(pl.LightningModule):
 
 class QualityEstimationBinaryClassification(QualityEstimation):
 
-    def __init__(self, hparams):
-        super().__init__(hparams)
-
-        config = XLMRobertaConfig.from_pretrained(self.hparams.model)
-        config.num_labels = 2
-        self.net = XLMRobertaForSequenceClassification.from_pretrained(self.hparams.model, config=config)
-        self.metrics = ["f1", "acc", "mcc"]
-        if self.hparams.val_loss not in self.metrics:
-            self.metrics.append(self.hparams.val_loss)
-
     @staticmethod
     def val_loss(val_loss):
         return -val_loss
@@ -211,6 +204,34 @@ class QualityEstimationBinaryClassification(QualityEstimation):
             "mcc": mcc,
         }
         return outputs_dict
+
+
+class QualityEstimationBinaryClassificationRoberta(QualityEstimationBinaryClassification):
+
+    def __init__(self, hparams):
+        super().__init__(hparams)
+
+        config = XLMRobertaConfig.from_pretrained(self.hparams.model)
+        config.num_labels = 2
+        self.net = XLMRobertaForSequenceClassification.from_pretrained(self.hparams.model, config=config)
+        self.tokenizer = XLMRobertaTokenizer.from_pretrained(self.hparams.model)
+        self.metrics = ["f1", "acc", "mcc"]
+        if self.hparams.val_loss not in self.metrics:
+            self.metrics.append(self.hparams.val_loss)
+
+
+class QualityEstimationBinaryClassificationBert(QualityEstimationBinaryClassification):
+
+    def __init__(self, hparams):
+        super().__init__(hparams)
+
+        config = BertConfig.from_pretrained(self.hparams.model)
+        config.num_labels = 2
+        self.net = BertForSequenceClassification.from_pretrained(self.hparams.model, config=config)
+        self.tokenizer = BertTokenizer.from_pretrained(self.hparams.model)
+        self.metrics = ["f1", "acc", "mcc"]
+        if self.hparams.val_loss not in self.metrics:
+            self.metrics.append(self.hparams.val_loss)
 
 
 class QualityEstimationRegression(QualityEstimation):

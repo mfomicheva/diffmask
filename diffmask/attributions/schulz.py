@@ -133,6 +133,10 @@ def roberta_hidden_states_statistics(model, input_only=True):
     return transformers_hidden_states_statistics(model, model.net.roberta, roberta_getter, input_only=input_only)
 
 
+def hidden_states_statistics(model, pretrained_model, getter, input_only):
+    return transformers_hidden_states_statistics(model, pretrained_model, getter, input_only=input_only)
+
+
 def sst_gru_hidden_states_statistics(model):
 
     with torch.no_grad():

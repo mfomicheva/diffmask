@@ -1,7 +1,9 @@
 import os
 import pytorch_lightning as pl
 
-from diffmask.models.quality_estimation import QualityEstimationBinaryClassification, QualityEstimationRegression
+from diffmask.models.quality_estimation import QualityEstimationRegression
+from diffmask.models.quality_estimation import QualityEstimationBinaryClassificationRoberta
+from diffmask.models.quality_estimation import QualityEstimationBinaryClassificationBert
 from diffmask.options import make_parser
 
 
@@ -21,7 +23,12 @@ if __name__ == '__main__':
     if hparams.num_labels == 1:
         qe = QualityEstimationRegression(hparams)
     elif hparams.num_labels == 2:
-        qe = QualityEstimationBinaryClassification(hparams)
+        if hparams.architecture == 'roberta':
+            qe = QualityEstimationBinaryClassificationRoberta(hparams)
+        elif hparams.architecture == 'bert':
+            qe = QualityEstimationBinaryClassificationBert(hparams)
+        else:
+            raise ValueError
     else:
         raise NotImplementedError
 
