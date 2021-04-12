@@ -45,6 +45,7 @@ def load_sent_level(
             text_b = tgts[i]
         result = tokenizer.encode_plus(
             text_a, text_pair=text_b, padding='max_length', truncation='only_first', max_length=max_seq_length,
+            pad_to_max_length=True,
         )
         data.append(result)
         word_labels_i = word_labels[i] if word_labels else None

@@ -16,7 +16,7 @@ setup(
     install_requires=[
         "torch>=1.5.0",
         "pytorch-lightning==0.7.5",
-        "transformers>=2.9.0",
+        "transformers==2.9.0",
         "spacy==2.2.4",
         "torch-optimizer==0.0.1a9",
     ],
