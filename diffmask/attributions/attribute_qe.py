@@ -109,12 +109,6 @@ class AttributeQE:
             return
 
         all_q_z_loc, all_q_z_scale = roberta_hidden_states_statistics(self.model, input_only=input_only)
-        kwargs = self.explainer_loss(
-            q_z_loc=all_q_z_loc[0].unsqueeze(0).to(self.device),
-            q_z_scale=all_q_z_scale[0].unsqueeze(0).to(self.device),
-            verbose=verbose,
-        )
-
         result = []
         for batch_idx, sample in enumerate(self.loader):
             input_ids, mask, labels = sample
@@ -125,6 +119,11 @@ class AttributeQE:
             }
             all_attributions = []
             for layer_idx in self.layer_indexes:
+                kwargs = self.explainer_loss(
+                    q_z_loc=all_q_z_loc[layer_idx].unsqueeze(0).to(self.device),
+                    q_z_scale=all_q_z_scale[layer_idx].unsqueeze(0).to(self.device),
+                    verbose=verbose,
+                )
                 layer_attributions = self.explainer_fn(
                     self.model.net,
                     inputs_dict=inputs_dict,
