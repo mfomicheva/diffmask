@@ -160,7 +160,7 @@ class AttributeQE:
         self.explainer_fn = guan_explainer if guan else schulz_explainer
         self.explainer_loss = guan_loss if guan else schulz_loss
 
-    def make_attributions(self, verbose=False, save=None, load=None, input_only=True, steps=100):
+    def make_attributions(self, verbose=False, save=None, load=None, input_only=True, steps=50):
 
         if load is not None:
             self.attributions = pickle.load(open(load, 'rb'))
