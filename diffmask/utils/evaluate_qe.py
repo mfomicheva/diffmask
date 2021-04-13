@@ -12,14 +12,13 @@ class EvaluateQE:
 
     @staticmethod
     def select_data_regression(data, max_error=None, max_size=None, min_pred=None, **kwargs):
-        data = list(zip(*data))[0]
-        data = sorted(data, key=lambda s: s.sent_pred, reverse=True)
+        data = sorted(data, key=lambda s: s[0].sent_pred, reverse=True)
         if max_error is not None:
-            data = [s for s in data if abs(s.sent_pred - s.sent_label) <= max_error]
+            data = [s for s in data if abs(s[0].sent_pred - s[0].sent_label) <= max_error]
         if max_size is not None:
             data = data[:max_size]
         if min_pred is not None:
-            data = [s for s in data if s.sent_pred > min_pred]
+            data = [s for s in data if s[0].sent_pred > min_pred]
         return data
 
     @staticmethod
@@ -28,15 +27,14 @@ class EvaluateQE:
             **kwargs
     ):
         output = []
-        data = list(zip(*data))[0]
         for sample in data:
-            if positive_gold and sample.sent_label != 1:
+            if positive_gold and sample[0].sent_label != 1:
                 continue
-            if positive_predicted and sample.sent_pred != 1:
+            if positive_predicted and sample[0].sent_pred != 1:
                 continue
-            if negative_gold and sample.sent_label == 1:
+            if negative_gold and sample[0].sent_label == 1:
                 continue
-            if negative_predicted and sample.sent_pred == 1:
+            if negative_predicted and sample[0].sent_pred == 1:
                 continue
             output.append(sample)
         return output
