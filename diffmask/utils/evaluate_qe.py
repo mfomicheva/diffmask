@@ -12,6 +12,7 @@ class EvaluateQE:
 
     @staticmethod
     def select_data_regression(data, max_error=None, max_size=None, min_pred=None, **kwargs):
+        data = list(zip(*data))[0]
         data = sorted(data, key=lambda s: s.sent_pred, reverse=True)
         if max_error is not None:
             data = [s for s in data if abs(s.sent_pred - s.sent_label) <= max_error]
@@ -27,6 +28,7 @@ class EvaluateQE:
             **kwargs
     ):
         output = []
+        data = list(zip(*data))[0]
         for sample in data:
             if positive_gold and sample.sent_label != 1:
                 continue
@@ -95,6 +97,7 @@ class EvaluateQE:
         return x, y, score
 
     def auc_score(self, data, layer_id, plot=False, save_plot=None, verbose=False, auprc=False, random_majority=False):
+        data = list(zip(*data))[2]
         if auprc:
             curve_fn = self.precision_recall_curve
             score_fn = average_precision_score
@@ -125,6 +128,7 @@ class EvaluateQE:
 
     @staticmethod
     def top1_accuracy(data, layer_id, topk=1, random=False, verbose=False):
+        data = list(zip(*data))[2]
         total_by_sent = 0
         correct_by_sent = 0
         for i, sample in enumerate(data):

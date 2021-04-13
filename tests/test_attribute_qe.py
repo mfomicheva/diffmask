@@ -26,8 +26,8 @@ class TestAttributeQE(unittest.TestCase):
             assert len(example[2].attributions_mapped[layer_id]) == 62
             assert len(example[2].attributions_bad[layer_id]) == 32
             eval_cls = EvaluateQE()
-            score = eval_cls.auc_score(list(zip(*data))[2], 0)
-            acc = eval_cls.top1_accuracy(list(zip(*data))[2], 0)
+            score = eval_cls.auc_score(data, 0)
+            acc = eval_cls.top1_accuracy(data, 0)
             assert acc == 0.5
 
             import numpy as np
