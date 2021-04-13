@@ -51,7 +51,10 @@ class EvaluateQE:
             src_attributions.append(summary_fn(sample.attributions_source[layer_id].detach().cpu().numpy()))
             tgt_attributions.append(summary_fn(sample.attributions_target[layer_id].detach().cpu().numpy()))
             special_attributions.append(summary_fn(sample.attributions_special[layer_id].detach().cpu().numpy()))
-            bad_attributions.append(summary_fn(sample_target_mapped.attributions_bad[layer_id]))
+            if len(sample_target_mapped.attributions_bad[layer_id]) > 0:
+                bad_attributions.append(summary_fn(sample_target_mapped.attributions_bad[layer_id]))
+            else:
+                bad_attributions.append(0.)
         res_all = np.mean(all_attributions)
         res_src = np.mean(src_attributions)
         res_tgt = np.mean(tgt_attributions)
