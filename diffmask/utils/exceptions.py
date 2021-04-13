@@ -1,0 +1,4 @@
+
+
+class TokenizationError(Exception):
+    pass

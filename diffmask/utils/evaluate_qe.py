@@ -40,33 +40,29 @@ class EvaluateQE:
         return output
 
     @staticmethod
-    def attributions_types(data, summary_fn):
+    def attributions_types(data, layer_id, summary_fn):
         all_attributions = []
         src_attributions = []
         tgt_attributions = []
         special_attributions = []
         bad_attributions = []
-        cls_attributions = []
-        for sample in data:
-            all_attributions.append(summary_fn(sample.bpe_attributions_layer))
-            src_attributions.append(summary_fn(sample.source_bpe_attributions()))
-            tgt_attributions.append(summary_fn(sample.target_bpe_attributions()))
-            special_attributions.append(summary_fn(sample.special_token_attributions))
-            cls_attributions.append(summary_fn(sample.special_token_attributions[0]))
-            bad_attributions.append(summary_fn(sample.error_token_attributions))
+        for (sample, sample_source_mapped, sample_target_mapped) in data:
+            all_attributions.append(summary_fn(sample.select_by_layer(sample.attributions, layer_id).detach().cpu().numpy()))
+            src_attributions.append(summary_fn(sample.attributions_source[layer_id].detach().cpu().numpy()))
+            tgt_attributions.append(summary_fn(sample.attributions_target[layer_id].detach().cpu().numpy()))
+            special_attributions.append(summary_fn(sample.attributions_special[layer_id].detach().cpu().numpy()))
+            bad_attributions.append(summary_fn(sample_target_mapped.attributions_bad[layer_id]))
         res_all = np.mean(all_attributions)
         res_src = np.mean(src_attributions)
         res_tgt = np.mean(tgt_attributions)
         res_spec = np.mean(special_attributions)
-        res_cls = np.mean(cls_attributions)
         res_bad = np.mean(bad_attributions)
         print('All attributions: {:.4f}'.format(res_all))
         print('Source attributions: {:.4f}'.format(res_src))
         print('Target attributions: {:.4f}'.format(res_tgt))
         print('Special token attributions: {:.4f}'.format(res_spec))
-        print('CLS token attributions: {:.4f}'.format(res_cls))
         print('Bad token attributions: {:.4f}'.format(res_bad))
-        return res_all, res_src, res_tgt, res_bad, res_spec, res_cls
+        return res_all, res_src, res_tgt, res_bad, res_spec
 
     @staticmethod
     def precision_recall_curve(ys, yhats):
@@ -74,20 +70,19 @@ class EvaluateQE:
         return rec, prec, _
 
     @staticmethod
-    def make_flat_data(data, random=False, majority=False):
+    def make_flat_data(data, layer_id, random=False, majority=False):
         ys = []
         yhats = []
         constant = None
         if majority:
             constant = sum([sum(s.word_labels) for s in data])/sum([len(s.word_labels) for s in data])
         for i, sample in enumerate(data):
+            attributions = sample.attributions_mapped[layer_id]
             if random:
                 if constant is not None:
-                    attributions = torch.full((len(sample.target_token_attributions),), constant).tolist()
+                    attributions = torch.full((len(attributions),), constant).tolist()
                 else:
-                    attributions = torch.rand((len(sample.target_token_attributions),)).tolist()
-            else:
-                attributions = sample.target_token_attributions
+                    attributions = torch.rand((len(attributions),)).tolist()
             for idx, val in enumerate(sample.word_labels):
                 ys.append(val)
                 yhats.append(attributions[idx])
@@ -99,7 +94,7 @@ class EvaluateQE:
         score = scoring_fn(ys, yhats)
         return x, y, score
 
-    def auc_score(self, data, plot=False, save_plot=None, verbose=False, auprc=False, random_majority=False):
+    def auc_score(self, data, layer_id, plot=False, save_plot=None, verbose=False, auprc=False, random_majority=False):
         if auprc:
             curve_fn = self.precision_recall_curve
             score_fn = average_precision_score
@@ -110,8 +105,8 @@ class EvaluateQE:
             score_fn = roc_auc_score
             x_label = 'False Positive Rate'
             y_label = 'True Positive Rate'
-        ys, yhats = self.make_flat_data(data)
-        _, yhats_random = self.make_flat_data(data, random=True, majority=random_majority)
+        ys, yhats = self.make_flat_data(data, layer_id)
+        _, yhats_random = self.make_flat_data(data, layer_id, random=True, majority=random_majority)
         x, y, score = self.make_curve(ys, yhats, curve_fn, score_fn)
         x_rand, y_rand, score_rand = self.make_curve(ys, yhats_random, curve_fn, score_fn)
         if plot:
@@ -129,16 +124,14 @@ class EvaluateQE:
         return score
 
     @staticmethod
-    def top1_accuracy(data, topk=1, random=False, verbose=False):
-        # data: output of self.select_target()
+    def top1_accuracy(data, layer_id, topk=1, random=False, verbose=False):
         total_by_sent = 0
         correct_by_sent = 0
         for i, sample in enumerate(data):
             gold = set([idx for idx, val in enumerate(sample.word_labels) if val == 1])
+            attributions = sample.attributions_mapped[layer_id]
             if random:
-                attributions = torch.rand((len(sample.target_token_attributions),)).tolist()
-            else:
-                attributions = sample.target_token_attributions
+                attributions = torch.rand((len(attributions),)).tolist()
             highest_attributions = np.argsort(attributions)[::-1]
             highest_attributions = highest_attributions[:topk]
             if any([idx in gold for idx in highest_attributions]):
@@ -155,7 +148,7 @@ class EvaluateQE:
         all_predictions = []
         all_labels = []
         for batch_idx, sample in enumerate(loader):
-            input_ids, mask, labels = sample
+            input_ids, mask, _, labels = sample
             inputs_dict = {
                 'input_ids': input_ids.to(device),
                 'mask': mask.to(device),

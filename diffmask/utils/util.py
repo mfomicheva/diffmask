@@ -1,5 +1,7 @@
 from collections import defaultdict
 
+from diffmask.utils.exceptions import TokenizationError
+
 
 def map_bpe_moses(bpe_tokens, moses_tokens):  # all special tokens need to be previously excluded from bpe_tokens
     bpe_tokens_orig = bpe_tokens
@@ -41,7 +43,7 @@ def map_bpe_moses(bpe_tokens, moses_tokens):  # all special tokens need to be pr
             chrt_idx_bpe += 1
 
         else:
-            raise ValueError
+            raise TokenizationError
 
     bpe_to_moses = mapping
     moses_to_bpe = defaultdict(list)

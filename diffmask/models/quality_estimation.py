@@ -16,7 +16,7 @@ from ..utils.metrics import accuracy_precision_recall_f1, matthews_corr_coef
 
 
 def load_sent_level(
-        path_src, path_tgt, path_labels, tokenizer, regression=False, max_seq_length=128,
+        path_src, path_tgt, path_labels, tokenizer, architecture, regression=False, max_seq_length=128,
         path_word_labels=None, target_only=False,
 ):
 
@@ -50,6 +50,8 @@ def load_sent_level(
             text_a, text_pair=text_b, padding='max_length', truncation='only_first', max_length=max_seq_length,
             pad_to_max_length=True,
         )
+        if architecture == 'roberta':
+            result['token_type_ids'] = torch.zeros((len(result['input_ids']),)).tolist()
         data.append(result)
         word_labels_i = word_labels[i] if word_labels else None
         data_text.append((srcs[i], tgts[i], labels[i], word_labels_i))
@@ -57,6 +59,7 @@ def load_sent_level(
     tensor_dataset = [
         torch.tensor([d['input_ids'] for d in data], dtype=torch.long),
         torch.tensor([d['attention_mask'] for d in data], dtype=torch.long),
+        torch.tensor([d['token_type_ids'] for d in data], dtype=torch.long),
         torch.tensor(labels, dtype=torch.float32 if regression else torch.long),
     ]
     return torch.utils.data.TensorDataset(*tensor_dataset), data_text
@@ -79,20 +82,20 @@ class QualityEstimation(pl.LightningModule):
         if self.hparams.src_train_filename is not None:
             self.train_dataset, self.train_dataset_orig = load_sent_level(
                 self.hparams.src_train_filename, self.hparams.tgt_train_filename, self.hparams.labels_train_filename,
-                self.tokenizer, path_word_labels=self.hparams.word_labels_train_filename, regression=self.regression,
-                target_only=self.hparams.target_only
+                self.tokenizer, self.hparams.architecture, path_word_labels=self.hparams.word_labels_train_filename,
+                regression=self.regression, target_only=self.hparams.target_only
             )
         if self.hparams.src_val_filename is not None:
             self.val_dataset, self.val_dataset_orig = load_sent_level(
                 self.hparams.src_val_filename, self.hparams.tgt_val_filename, self.hparams.labels_val_filename,
-                self.tokenizer, path_word_labels=self.hparams.word_labels_val_filename, regression=self.regression,
-                target_only=self.hparams.target_only
+                self.tokenizer, self.hparams.architecture, path_word_labels=self.hparams.word_labels_val_filename,
+                regression=self.regression, target_only=self.hparams.target_only
             )
         if self.hparams.src_test_filename is not None:
             self.test_dataset, self.test_dataset_orig = load_sent_level(
                 self.hparams.src_test_filename, self.hparams.tgt_test_filename, self.hparams.labels_test_filename,
-                self.tokenizer, path_word_labels=self.hparams.word_labels_test_filename, regression=self.regression,
-                target_only=self.hparams.target_only
+                self.tokenizer, self.hparams.architecture, path_word_labels=self.hparams.word_labels_test_filename,
+                regression=self.regression, target_only=self.hparams.target_only
             )
 
     def make_sampler(self):
@@ -125,7 +128,7 @@ class QualityEstimation(pl.LightningModule):
         )
 
     def training_step(self, batch, batch_idx=None):
-        input_ids, mask, labels = batch
+        input_ids, mask, _, labels = batch
 
         logits = self.forward(input_ids, mask)[0]
         loss = self.loss(logits, labels)

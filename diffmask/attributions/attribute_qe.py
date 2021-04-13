@@ -4,87 +4,143 @@ import pickle
 from diffmask.attributions.schulz import schulz_explainer, hidden_states_statistics, schulz_loss
 from diffmask.attributions.guan import guan_explainer, guan_loss
 from diffmask.utils.util import map_bpe_moses, map_bpe_moses_bert
-
-# TODO: map to source/target/special at the data preparation stage
+from diffmask.utils.exceptions import TokenizationError
 
 
 class SampleAttributions:
 
+    def __init__(self, input_ids, attributions, mask, tokenizer, sent_label, sent_pred=None):
+        self.input_ids = input_ids
+        self.attributions = attributions
+        self.mask = mask
+        self.tokenizer = tokenizer
+        self.sent_pred = sent_pred
+        self.sent_label = sent_label
+        self.attributions_source = dict()
+        self.attributions_target = dict()
+        self.attributions_special = dict()
+        self.input_ids_source = None
+        self.input_ids_target = None
+        self.input_ids_special = None
+
+    def format_attributions(self, normalize=False, invert=False, target_only=False):
+        self.remove_masked()
+        num_layers = self.attributions.shape[1]
+        for layer_id in range(num_layers):
+            attributions_id = self.select_by_layer(self.attributions, layer_id)
+            if normalize:
+                attributions_id = self.normalize_attributions(attributions_id)
+            if invert:
+                attributions_id = self.invert(attributions_id)
+            if not target_only:
+                ids, ats = self.select_source(self.input_ids, self.tokenizer, attributions_id)
+                self.attributions_source[layer_id] = ats
+                self.input_ids_source = ids
+            ids, ats = self.select_target(self.input_ids, self.tokenizer, attributions_id, target_only=target_only)
+            self.attributions_target[layer_id] = ats
+            self.input_ids_target = ids
+            ids, ats = self.select_special(self.input_ids, self.tokenizer, attributions_id)
+            self.attributions_special[layer_id] = ats
+            self.input_ids_special = ids
+
+    def remove_masked(self):
+        self.input_ids = torch.as_tensor(self.input_ids)[:self.mask.sum(-1).item()].tolist()
+        self.attributions = self.attributions[:self.mask.sum(-1).item()].cpu()
+
+    @staticmethod
+    def select_by_layer(attributions, layer_id):
+        if layer_id == -1:
+            return torch.mean(attributions, dim=-1)
+        else:
+            return attributions[:, layer_id]
+
+    @staticmethod
+    def normalize_attributions(attributions):
+        return attributions / attributions.abs().max(0, keepdim=True).values
+
+    @staticmethod
+    def invert(attributions):
+        return 1. - attributions
+
+    @staticmethod
+    def select_source(input_ids, tokenizer, attributions, with_special=False):
+        start_id = 1
+        end_id = input_ids.index(tokenizer.sep_token_id)
+        if with_special:
+            start_id -= 1
+            end_id += 1
+        return input_ids[start_id:end_id], attributions[start_id:end_id]
+
+    @staticmethod
+    def select_target(input_ids, tokenizer, attributions, target_only=False, with_special=False):
+        t = torch.as_tensor(input_ids)
+        cond = torch.where(t == tokenizer.sep_token_id, torch.ones(t.shape), torch.zeros(t.shape))
+        eos_ids = torch.nonzero(cond).squeeze(dim=-1).tolist()
+        if target_only:
+            start_id = 1
+        else:
+            if len(eos_ids) == 3:
+                start_id = eos_ids[1] + 1
+            elif len(eos_ids) == 2:
+                start_id = eos_ids[0] + 1
+            else:
+                raise ValueError
+        end_id = eos_ids[-1]
+        if with_special:
+            start_id -= 1
+            end_id += 1
+        return input_ids[start_id:end_id], attributions[start_id:end_id]
+
+    @staticmethod
+    def select_special(input_ids, tokenizer, attributions):
+        idx = input_ids.index(tokenizer.cls_token_id)
+        return [idx], attributions[idx]
+
+
+class SampleAttributionsMapping:
+
     def __init__(
-            self, source_tokens, target_tokens, bpe_tokens, bpe_attributions, word_labels, sent_label,
-            sent_pred, layer_id, normalize=False, invert=False, sep_token='</s>', token_mapper_fn=map_bpe_moses,
+            self, input_ids, attributions, moses_tokens, word_labels, sent_label, bpe_tokenizer, token_mapper_fn,
+            sent_pred=None
     ):
-        self.source_tokens = source_tokens
-        self.target_tokens = target_tokens
-        self.bpe_tokens = bpe_tokens
-        self.bpe_attributions = bpe_attributions
-        self.word_labels = word_labels
+        self.input_ids = input_ids
+        self.attributions = attributions
+        self.moses_tokens = moses_tokens
+        self.tokenizer = bpe_tokenizer
+        self.mapper_fn = token_mapper_fn
         self.sent_label = sent_label
         self.sent_pred = sent_pred
-        self.layer_id = layer_id
+        self.word_labels = word_labels
+        self.attributions_mapped = dict()
+        self.attributions_bad = dict()
 
-        self.token_mappper_fn = token_mapper_fn
-
-        self.cls_idx = 0
-        self.sep_idx = self.bpe_tokens.index(sep_token)
-        self.eos_idx = len(self.bpe_tokens) - 1
-
-        self.normalize = normalize
-        self.invert = invert
-
-        self.bpe_attributions_layer = None
-        self.source_token_attributions = None
-        self.target_token_attributions = None
-        self.special_token_attributions = None
-        self.error_token_attributions = None
-        self.random_attributions = None
-        self.bpe_moses_target = None
-
-    def map_attributions(self):
+    def format_attributions(self):
         try:
-            src_bpe_moses, src_moses_bpe = self.token_mappper_fn(self.source_bpe_tokens(), self.source_tokens)
-            tgt_bpe_moses, tgt_moses_bpe = self.token_mappper_fn(self.target_bpe_tokens(), self.target_tokens)
-        except ValueError:
-            raise
-        self.set_layer_bpe_attributions()
-        self.source_token_attributions = self._max_attribution(src_moses_bpe, self.source_bpe_attributions())
-        self.target_token_attributions = self._max_attribution(tgt_moses_bpe, self.target_bpe_attributions())
-        self.special_token_attributions = torch.tensor([self.bpe_attributions_layer[idx] for idx in (
-            self.cls_idx,)])
-        self.error_token_attributions = torch.tensor(self._error_attributions(
-            self.target_bpe_attributions(), self.word_labels, tgt_bpe_moses))
-
-    def set_layer_bpe_attributions(self):
-        if self.layer_id == -1:
-            self.bpe_attributions_layer = torch.mean(self.bpe_attributions, dim=-1)
-        else:
-            self.bpe_attributions_layer = self.bpe_attributions[:, self.layer_id]
-        if self.normalize:
-            self.bpe_attributions_layer = self.bpe_attributions_layer / self.bpe_attributions_layer.abs().max(0, keepdim=True).values
-        if self.invert:
-            self.bpe_attributions_layer = 1. - self.bpe_attributions_layer
-
-    def source_bpe_tokens(self):
-        return self.bpe_tokens[1:self.sep_idx]
-
-    def target_bpe_tokens(self):
-        return self.bpe_tokens[self.sep_idx+2: self.eos_idx]
-
-    def source_bpe_attributions(self):
-        return self.bpe_attributions_layer[1:self.sep_idx]
-
-    def target_bpe_attributions(self):
-        return self.bpe_attributions_layer[self.sep_idx+2:self.eos_idx]
+            bpe_moses, moses_bpe = self.map_tokens(self.moses_tokens, self.input_ids, self.tokenizer, self.mapper_fn)
+        except TokenizationError:
+            raise TokenizationError
+        for layer_id in self.attributions:
+            self.attributions_mapped[layer_id] = self.map_attributions(moses_bpe, self.attributions[layer_id])
+            self.attributions_bad[layer_id] = self.select_by_word_label(self.attributions_mapped[layer_id], self.word_labels, bpe_moses)
 
     @staticmethod
-    def _error_attributions(attributions, labels, mapping):
-        error_idxs = [i for i, l in enumerate(labels) if l == 1]
-        return [a for i, a in enumerate(attributions) if mapping[i] in error_idxs]
+    def map_tokens(moses_tokens, input_ids, bpe_tokenizer, token_mapper_fn):
+        bpe_tokens = bpe_tokenizer.convert_ids_to_tokens(input_ids)
+        try:
+            bpe_moses, moses_bpe = token_mapper_fn(bpe_tokens, moses_tokens)
+        except TokenizationError:
+            raise TokenizationError
+        return bpe_moses, moses_bpe
 
     @staticmethod
-    def _max_attribution(moses_to_bpe, bpe_attributions):
+    def map_attributions(moses_to_bpe, attributions):
         token_indexes = sorted(moses_to_bpe.keys())
-        return [max([bpe_attributions[bpe_idx] for bpe_idx in moses_to_bpe[index]]) for index in token_indexes]
+        return [max([attributions[bpe_id] for bpe_id in moses_to_bpe[index]]) for index in token_indexes]
+
+    @staticmethod
+    def select_by_word_label(attributions, word_labels, bpe_moses_mapping):
+        ids = [i for i, label in enumerate(word_labels) if label == 1]
+        return [a for i, a in enumerate(attributions) if bpe_moses_mapping[i] in ids]
 
 
 class AttributeQE:
@@ -104,16 +160,21 @@ class AttributeQE:
         self.explainer_fn = guan_explainer if guan else schulz_explainer
         self.explainer_loss = guan_loss if guan else schulz_loss
 
-    def make_attributions(self, verbose=False, save=None, load=None, input_only=True):
+    def make_attributions(self, verbose=False, save=None, load=None, input_only=True, steps=100):
 
         if load is not None:
             self.attributions = pickle.load(open(load, 'rb'))
             return
-
-        all_q_z_loc, all_q_z_scale = hidden_states_statistics(self.model, self.model.net, self.getter, input_only=input_only)
+        if self.model.hparams.architecture == 'roberta':
+            pretrained_model = self.model.net.roberta
+        elif self.model.hparams.architecture == 'bert':
+            pretrained_model = self.model.net.bert
+        else:
+            raise NotImplementedError
+        all_q_z_loc, all_q_z_scale = hidden_states_statistics(self.model, pretrained_model, self.getter, input_only=input_only)
         result = []
         for batch_idx, sample in enumerate(self.loader):
-            input_ids, mask, labels = sample
+            input_ids, mask, _, labels = sample
             inputs_dict = {
                 'input_ids': input_ids.to(self.device),
                 'attention_mask': mask.to(self.device),
@@ -133,7 +194,7 @@ class AttributeQE:
                     getter=self.getter,
                     setter=self.setter,
                     hidden_state_idx=layer_idx,
-                    steps=10,
+                    steps=steps,
                     lr=1e-1,
                     la=10,
                     **kwargs,
@@ -149,38 +210,64 @@ class AttributeQE:
             pickle.dump(result, open(save, 'wb'))
         self.attributions = result
 
-    def make_data(self, layer_id, predictions=None, silent=False, normalize=False, invert=False):
-        if layer_id != -1:
-            assert layer_id in self.layer_indexes
-            layer_id = self.layer_indexes.index(layer_id)
+    def make_data(self, silent=False, normalize=False, invert=False, target_only=False, predictions=None):
         res = []
-        sep_token = '</s>' if self.model.hparams.architecture == 'roberta' else '[SEP]'
         tokens_mapper_fn = map_bpe_moses if self.model.hparams.architecture == 'roberta' else map_bpe_moses_bert
         for sentid in range(len(self.attributions)):
-            input_ids, mask, sent_labels = self.dataset[sentid]
-            bpe_tokens = self.model.tokenizer.convert_ids_to_tokens(input_ids.squeeze()[:mask.sum(-1).item()].squeeze())
+            source_tokens = self.text_dataset[sentid][0].split()
+            target_tokens = self.text_dataset[sentid][1].split()
+            word_labels = self.text_dataset[sentid][3]
             sent_pred = predictions[sentid] if predictions is not None else None
-            bpe_attributions = self.attributions[sentid][:mask.sum(-1).item()].cpu()
-            sample = SampleAttributions(
-                self.text_dataset[sentid][0].split(), self.text_dataset[sentid][1].split(), bpe_tokens,
-                bpe_attributions, self.text_dataset[sentid][3], sent_labels.item(), sent_pred, layer_id,
-                normalize=normalize, invert=invert, sep_token=sep_token, token_mapper_fn=tokens_mapper_fn
-            )
-            if len(sample.source_tokens) == 0 or len(sample.target_tokens) == 0 or len(sample.bpe_tokens) == 0:
+            if len(source_tokens) == 0 or len(target_tokens) == 0:
                 if not silent:
                     print('Empty segment! Skipping...')
                 continue
             try:
-                sample.map_attributions()
-            except ValueError:
+                sample_attributions, mapped_source, mapped_target = self.format_sample_attributions(
+                    target_tokens, word_labels, self.dataset[sentid], self.attributions[sentid], self.model.tokenizer,
+                    tokens_mapper_fn, normalize=normalize, invert=invert, target_only=target_only,
+                    source_tokens=source_tokens, sent_pred=sent_pred,
+                )
+            except TokenizationError:
                 if not silent:
                     print('BPE mapping error! Skipping...')
                 continue
             try:
-                assert len(sample.word_labels) == len(sample.target_token_attributions)
+                assert len(word_labels) == len(mapped_target.attributions_mapped[0])
             except AssertionError:
                 if not silent:
                     print('Sequence too long. Skipping')
                 continue
-            res.append(sample)
+            res.append((sample_attributions, mapped_source, mapped_target,))
         return res
+
+    @staticmethod
+    def format_sample_attributions(
+            tokens, word_labels, sample, attributions, tokenizer, token_mapper_fn, normalize=False, invert=False,
+            target_only=False, source_tokens=None, sent_pred=None
+    ):
+        input_ids, mask, _, sent_labels = sample
+        sample_attributions = SampleAttributions(
+            input_ids, attributions, mask, tokenizer, sent_labels.item(), sent_pred=sent_pred)
+        sample_attributions.format_attributions(normalize=normalize, invert=invert, target_only=target_only)
+        mapped_source = None
+        if not target_only:
+            mapped_source = SampleAttributionsMapping(
+                sample_attributions.input_ids_source,
+                sample_attributions.attributions_source,
+                source_tokens, word_labels, sent_labels.item(), tokenizer, token_mapper_fn, sent_pred=sent_pred
+            )
+            try:
+                mapped_source.format_attributions()
+            except TokenizationError:
+                raise
+        mapped_target = SampleAttributionsMapping(
+            sample_attributions.input_ids_target,
+            sample_attributions.attributions_target,
+            tokens, word_labels, sent_labels.item(), tokenizer, token_mapper_fn, sent_pred=sent_pred
+        )
+        try:
+            mapped_target.format_attributions()
+        except TokenizationError:
+            raise
+        return sample_attributions, mapped_source, mapped_target
