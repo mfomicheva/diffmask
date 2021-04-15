@@ -50,7 +50,7 @@ def load_sent_level(
             text_a = srcs[i]
             text_b = tgts[i]
         result = tokenizer.encode_plus(
-            text_a, text_pair=text_b, padding='max_length', truncation='only_first', max_length=max_seq_length,
+            text_a, text_pair=text_b, padding='max_length', truncation='longest_first', max_length=max_seq_length,
             pad_to_max_length=True,
         )
         if architecture == 'roberta':
@@ -183,7 +183,7 @@ class QualityEstimation(pl.LightningModule):
         optimizers = [optimizer]
         schedulers = [
             {
-                "scheduler":scheduler,
+                "scheduler": scheduler,
                 "interval": "step",
             },
         ]
