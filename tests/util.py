@@ -27,7 +27,7 @@ def _make_files(data, num_examples, max_len, data_dir, file_prefix):
                             ex_len = random.randint(1, max_len + 1)
                             print(' '.join([vocab[i] for i in data[offset:offset + ex_len]]), file=fh)
                             offset += ex_len
-                        print(torch.randint(2, (1,)).item(), file=l)
+                        print(torch.full((1,), 1).item(), file=l)
                         print(' '.join(map(str, torch.randint(2, (ex_len,)).tolist())), file=w)
 
 

@@ -10,6 +10,7 @@ from transformers import (
     BertForSequenceClassification,
     BertConfig,
     get_constant_schedule_with_warmup,
+    get_linear_schedule_with_warmup
 )
 
 from ..utils.metrics import accuracy_precision_recall_f1, matthews_corr_coef
@@ -170,16 +171,32 @@ class QualityEstimation(pl.LightningModule):
         return outputs_dict
 
     def configure_optimizers(self):
-        optimizers = [
-            torch.optim.AdamW(self.parameters(), lr=4e-5, eps=1e-8),
+
+        no_decay = ["bias", "LayerNorm.weight"]
+        optimizer_grouped_parameters = [
+            {
+                "params": [p for n, p in self.net.named_parameters() if not any(nd in n for nd in no_decay)],
+                "weight_decay": 0.0,
+            },
+            {
+                "params": [p for n, p in self.net.named_parameters() if any(nd in n for nd in no_decay)],
+                "weight_decay": 0.0,
+            },
         ]
+        import math
+        total = len(self.train_dataloader()) // self.hparams.epochs
+        warmup_steps = math.ceil(total * 0.06)
+        optimizer = torch.optim.AdamW(optimizer_grouped_parameters, lr=4e-5, eps=1e-8)
+        scheduler = get_linear_schedule_with_warmup(
+            optimizer, num_warmup_steps=warmup_steps, num_training_steps=total
+        )
+        optimizers = [optimizer]
         schedulers = [
             {
-                "scheduler": get_constant_schedule_with_warmup(optimizers[0], 0),
+                "scheduler":scheduler,
                 "interval": "step",
             },
         ]
-
         return optimizers, schedulers
 
     def forward(self, input_ids, mask, labels=None):
@@ -255,6 +272,7 @@ class QualityEstimationRegression(QualityEstimation):
 
     @staticmethod
     def loss(logits, labels):
+        print('Using MSE loss')
         loss = torch.nn.functional.mse_loss(logits, labels, reduction="mean")
         return loss
 
