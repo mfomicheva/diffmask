@@ -32,15 +32,12 @@ if __name__ == '__main__':
     else:
         raise NotImplementedError
 
-    lr_monitor = pl.callbacks.lr_monitor.LearningRateMonitor.LearningRateMonitor(logging_interval='step')
-
     trainer = pl.Trainer(
         gpus=int(hparams.use_cuda),
         progress_bar_refresh_rate=0,
         max_epochs=hparams.epochs,
         check_val_every_n_epoch=1,
         logger=pl.loggers.TensorBoardLogger("outputs", name="qe"),
-        callbacks=[lr_monitor],
         checkpoint_callback=checkpoint_callback,
         gradient_clip_val=1.
     )
