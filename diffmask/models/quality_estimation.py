@@ -272,8 +272,7 @@ class QualityEstimationRegression(QualityEstimation):
 
     @staticmethod
     def loss(logits, labels):
-        print('Using MSE loss')
-        loss = torch.nn.functional.mse_loss(logits, labels, reduction="mean")
+        loss = torch.nn.functional.mse_loss(logits, labels.view(-1, 1), reduction="mean")
         return loss
 
     @staticmethod
