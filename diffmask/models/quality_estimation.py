@@ -2,6 +2,8 @@ import torch
 from torch.utils.data import WeightedRandomSampler
 import pytorch_lightning as pl
 
+from scipy.stats import pearsonr
+
 from transformers import (
     XLMRobertaTokenizer,
     XLMRobertaForSequenceClassification,
@@ -263,7 +265,7 @@ class QualityEstimationRegression(QualityEstimation):
         config.num_labels = 1
         self.net = XLMRobertaForSequenceClassification.from_pretrained(self.hparams.model, config=config)
         self.tokenizer = XLMRobertaTokenizer.from_pretrained(self.hparams.model)
-        self.metrics = ["mse"]
+        self.metrics = ["mse", "pearson"]
         self.regression = True
 
     @staticmethod
@@ -277,4 +279,6 @@ class QualityEstimationRegression(QualityEstimation):
 
     @staticmethod
     def compute_metrics(logits, labels, loss):
-        return {"mse": loss}
+        yhat = logits.squeeze().detach().cpu().numpy()
+        y = labels.squeeze().detach().cpu().numpy()
+        return {"mse": loss, "pearson": -1 * pearsonr(y, yhat)[0]}

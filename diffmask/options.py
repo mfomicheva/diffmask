@@ -24,7 +24,7 @@ def make_parser():
     parser.add_argument("--learning_rate", type=float, default=3e-5)
     parser.add_argument("--epochs", type=int, default=10)
     parser.add_argument("--class_weighting", default=False, action='store_true')
-    parser.add_argument("--val_loss", default="f1", choices=["f1", "mcc", "mse"])
+    parser.add_argument("--val_loss", default="f1", choices=["f1", "mcc", "mse", "pearson"])
     parser.add_argument("--num_labels", default=2, type=int)
     parser.add_argument("--target_only", action='store_true', default=False)
     return parser
