@@ -245,6 +245,7 @@ class QualityEstimationRegression(QualityEstimation):
         config = XLMRobertaConfig.from_pretrained(self.hparams.model)
         config.num_labels = 1
         self.net = XLMRobertaForSequenceClassification.from_pretrained(self.hparams.model, config=config)
+        self.tokenizer = XLMRobertaTokenizer.from_pretrained(self.hparams.model)
         self.metrics = ["mse"]
         self.regression = True
 
