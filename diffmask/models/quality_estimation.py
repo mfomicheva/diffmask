@@ -1,4 +1,6 @@
+import math
 import torch
+
 from torch.utils.data import WeightedRandomSampler
 import pytorch_lightning as pl
 
@@ -173,8 +175,7 @@ class QualityEstimation(pl.LightningModule):
         return outputs_dict
 
     def configure_optimizers(self):
-        import math
-        total = len(self.train_dataloader()) // self.hparams.epochs
+        total = len(self.train_dataloader()) * self.hparams.epochs
         warmup_steps = math.ceil(total * 0.06)
         optimizer = torch.optim.AdamW(self.parameters(), lr=4e-5, eps=1e-8)
         scheduler = get_linear_schedule_with_warmup(
