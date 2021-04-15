@@ -171,11 +171,11 @@ class QualityEstimation(pl.LightningModule):
 
     def configure_optimizers(self):
         optimizers = [
-            torch.optim.Adam(self.parameters(), self.hparams.learning_rate),
+            torch.optim.AdamW(self.parameters(), lr=4e-5, eps=1e-8),
         ]
         schedulers = [
             {
-                "scheduler": get_constant_schedule_with_warmup(optimizers[0], 200),
+                "scheduler": get_constant_schedule_with_warmup(optimizers[0], 0),
                 "interval": "step",
             },
         ]
