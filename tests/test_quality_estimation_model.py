@@ -57,6 +57,12 @@ class TestQualityEstimationModel(unittest.TestCase):
             train_model(data_dir, hparams)
             assert 'epoch=0.ckpt' in os.listdir(data_dir)
 
+    def test_train_model_regression(self):
+        with tempfile.TemporaryDirectory("test_prepare_data") as data_dir:
+            hparams = make_hparams(data_dir, 'roberta', 'xlm-roberta-base', num_labels=1, val_loss='mse',)
+            train_model(data_dir, hparams)
+            assert 'epoch=0.ckpt' in os.listdir(data_dir)
+
     def test_train_model_bert(self):
         with tempfile.TemporaryDirectory("test_prepare_data") as data_dir:
             hparams = make_hparams(data_dir, 'bert', 'bert-base-multilingual-cased')

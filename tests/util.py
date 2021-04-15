@@ -36,7 +36,7 @@ def create_dummy_data(data_dir, file_prefix, num_examples=100, max_len=100):
     _make_files(data, num_examples, max_len, data_dir, file_prefix)
 
 
-def make_hparams(data_dir, architecture, pretrained_model_name, target_only=False):
+def make_hparams(data_dir, architecture, pretrained_model_name, target_only=False, num_labels=2, val_loss='f1'):
     parser = make_parser()
     parser.parse_known_args()
     input_args = [
@@ -52,6 +52,8 @@ def make_hparams(data_dir, architecture, pretrained_model_name, target_only=Fals
         '--word_labels_val_filename', os.path.join(data_dir, 'valid.tags'),
         '--model_path', os.path.join(data_dir),
         '--epochs', '1',
+        '--num_labels', str(num_labels),
+        '--val_loss', val_loss,
     ]
     if target_only:
         input_args.append('--target_only')
