@@ -270,4 +270,4 @@ class QualityEstimationRegression(QualityEstimation):
     def compute_metrics(logits, labels, loss):
         yhat = logits.squeeze().detach().cpu().numpy()
         y = labels.squeeze().detach().cpu().numpy()
-        return {"mse": loss, "pearson": -1 * pearsonr(y, yhat)[0]}
+        return {"mse": loss, "pearson": pearsonr(y, yhat)[0]}
