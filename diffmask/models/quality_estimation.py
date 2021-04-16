@@ -119,17 +119,17 @@ class QualityEstimation(pl.LightningModule):
         sampler = self.make_sampler() if self.hparams.class_weighting else None
         shuffle = False if sampler else True
         return torch.utils.data.DataLoader(
-            self.train_dataset, batch_size=self.hparams.batch_size, shuffle=shuffle, sampler=sampler,
+            self.train_dataset, batch_size=self.hparams.batch_size, shuffle=shuffle, sampler=sampler, num_workers=20,
         )
 
     def val_dataloader(self):
         return torch.utils.data.DataLoader(
-            self.val_dataset, batch_size=self.hparams.batch_size
+            self.val_dataset, batch_size=self.hparams.batch_size, num_workers=20,
         )
 
     def test_dataloader(self):
         return torch.utils.data.DataLoader(
-            self.test_dataset, batch_size=self.hparams.batch_size
+            self.test_dataset, batch_size=self.hparams.batch_size, num_workers=20,
         )
 
     def training_step(self, batch, batch_idx=None):
