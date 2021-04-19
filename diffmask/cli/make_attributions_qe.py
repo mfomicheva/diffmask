@@ -15,7 +15,7 @@ if __name__ == '__main__':
     parser.add_argument("--data_split", default="valid", choices=["test", "valid"])
     hparams = parser.parse_args()
     print(hparams)
-    device = "cuda" if hparams.use_gpu else "cpu"
+    device = "cuda" if hparams.use_cuda else "cpu"
 
     if hparams.num_labels > 1:
         if hparams.architecture == 'roberta':
