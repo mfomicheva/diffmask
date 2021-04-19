@@ -12,7 +12,7 @@ if __name__ == '__main__':
     parser.add_argument("--steps", default=50, type=int)
     parser.add_argument("--input_only", default=False, action="store_true")
     parser.add_argument("--save", default=None, type=str)
-    parser.add_argument("--data_split", default="valid", options=["test", "valid"])
+    parser.add_argument("--data_split", default="valid", choices=["test", "valid"])
     hparams = parser.parse_args()
     print(hparams)
     device = "cuda" if hparams.use_gpu else "cpu"
