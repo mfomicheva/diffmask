@@ -13,10 +13,6 @@ class CallbackSST(pl.Callback):
         )
 
 
-class CallbackQE(CallbackSST):
-    pass
-
-
 class CallbackSSTDiffMask(pl.Callback):
     def on_validation_end(self, trainer, pl_module):
         print(

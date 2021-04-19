@@ -176,8 +176,8 @@ class QualityEstimation(pl.LightningModule):
 
     def configure_optimizers(self):
         total = len(self.train_dataloader()) * self.hparams.epochs
-        warmup_steps = math.ceil(total * 0.06)
-        optimizer = torch.optim.AdamW(self.parameters(), lr=4e-5, eps=1e-8)
+        warmup_steps = math.ceil(total * self.hparams.warmup_percentage)
+        optimizer = torch.optim.AdamW(self.parameters(), lr=self.hparams.learning_rate, eps=1e-8)
         scheduler = get_linear_schedule_with_warmup(
             optimizer, num_warmup_steps=warmup_steps, num_training_steps=total
         )

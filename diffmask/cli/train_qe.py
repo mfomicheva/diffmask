@@ -39,6 +39,6 @@ if __name__ == '__main__':
         check_val_every_n_epoch=1,
         logger=pl.loggers.TensorBoardLogger("outputs", name="qe"),
         checkpoint_callback=checkpoint_callback,
-        gradient_clip_val=1.
+        gradient_clip_val=hparams.clip_grad,
     )
     trainer.fit(qe)

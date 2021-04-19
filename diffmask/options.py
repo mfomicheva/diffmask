@@ -27,4 +27,6 @@ def make_parser():
     parser.add_argument("--val_loss", default="f1", choices=["f1", "mcc", "mse", "pearson"])
     parser.add_argument("--num_labels", default=2, type=int)
     parser.add_argument("--target_only", action='store_true', default=False)
+    parser.add_argument("--clip_grad", default=0., type=float)
+    parser.add_argument("--warmup_percentage", default=0., type=float, help="Percentage of iterations for warmup")
     return parser
