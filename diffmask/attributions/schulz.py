@@ -95,6 +95,10 @@ def schulz_explainer(
     return attributions
 
 
+def hidden_states_statistics(model, pretrained_model, getter, input_only):
+    return transformers_hidden_states_statistics(model, pretrained_model, getter, input_only=input_only)
+
+
 def transformers_hidden_states_statistics(model, transformers_model, getter, input_only=True):
 
     with torch.no_grad():
@@ -123,18 +127,6 @@ def transformers_hidden_states_statistics(model, transformers_model, getter, inp
         ).sqrt()
 
     return all_q_z_loc, all_q_z_scale
-
-
-def bert_hidden_states_statistics(model, input_only=True):
-    return transformers_hidden_states_statistics(model, model.net.bert, bert_getter, input_only=input_only)
-
-
-def roberta_hidden_states_statistics(model, input_only=True):
-    return transformers_hidden_states_statistics(model, model.net.roberta, roberta_getter, input_only=input_only)
-
-
-def hidden_states_statistics(model, pretrained_model, getter, input_only):
-    return transformers_hidden_states_statistics(model, pretrained_model, getter, input_only=input_only)
 
 
 def sst_gru_hidden_states_statistics(model):
