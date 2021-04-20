@@ -153,7 +153,6 @@ class AttributeQE:
         self.split = split
         self.device = device
 
-        self.loader = self.model.test_dataloader() if split == 'test' else self.model.val_dataloader()
         self.text_dataset = self.model.test_dataset_orig if split == 'test' else self.model.val_dataset_orig
         self.dataset = self.model.test_dataset if split == 'test' else self.model.val_dataset
         self.attributions = None
@@ -173,7 +172,7 @@ class AttributeQE:
             raise NotImplementedError
         all_q_z_loc, all_q_z_scale = hidden_states_statistics(self.model, pretrained_model, self.getter, input_only=input_only)
         result = []
-        for batch_idx, sample in enumerate(self.loader):
+        for batch_idx, sample in enumerate(torch.utils.data.DataLoader(self.dataset, batch_size=1, num_workers=20)):
             input_ids, mask, _, labels = sample
             inputs_dict = {
                 'input_ids': input_ids.to(self.device),
