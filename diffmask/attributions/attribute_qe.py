@@ -145,7 +145,7 @@ class SampleAttributionsMapping:
 
 class AttributeQE:
 
-    def __init__(self, model, getter, setter, layer_indexes, device, split='valid', guan=False):
+    def __init__(self, model, getter, setter, layer_indexes, device, split='valid', guan=False, batch_size=None):
         self.model = model
         self.getter = getter
         self.setter = setter
@@ -158,6 +158,8 @@ class AttributeQE:
         self.attributions = None
         self.explainer_fn = guan_explainer if guan else schulz_explainer
         self.explainer_loss = guan_loss if guan else schulz_loss
+
+        self.batch_size = batch_size if batch_size is not None else self.model.hparams.batch_size
 
     def make_attributions(self, verbose=False, save=None, load=None, input_only=True, steps=50):
 
@@ -172,7 +174,7 @@ class AttributeQE:
             raise NotImplementedError
         all_q_z_loc, all_q_z_scale = hidden_states_statistics(self.model, pretrained_model, self.getter, input_only=input_only)
         result = []
-        for batch_idx, sample in enumerate(torch.utils.data.DataLoader(self.dataset, batch_size=1, num_workers=20)):
+        for batch_idx, sample in enumerate(torch.utils.data.DataLoader(self.dataset, batch_size=self.model.hparams.batch_size, num_workers=20)):
             input_ids, mask, _, labels = sample
             inputs_dict = {
                 'input_ids': input_ids.to(self.device),

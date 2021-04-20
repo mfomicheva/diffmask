@@ -13,6 +13,7 @@ if __name__ == '__main__':
     parser.add_argument("--input_only", default=False, action="store_true")
     parser.add_argument("--save", default=None, type=str)
     parser.add_argument("--data_split", default="valid", choices=["test", "valid"])
+    parser.add_argument("--batch_size", default=None, type=int)
     hparams = parser.parse_args()
     print(hparams)
     device = "cuda" if hparams.use_cuda else "cpu"
@@ -33,6 +34,6 @@ if __name__ == '__main__':
 
     layer_indexes = list(range(hparams.num_layers))
     split = 'test' if hparams.src_test_filename is not None else 'valid'
-    loader = qe.test_dataloader() if split == 'test' else qe.val_dataloader()
-    attribute_qe = AttributeQE(qe, roberta_getter, roberta_setter, layer_indexes, device, split=split)
+    attribute_qe = AttributeQE(
+        qe, roberta_getter, roberta_setter, layer_indexes, device, split=split, batch_size=hparams.batch_size)
     attribute_qe.make_attributions(save=hparams.save, input_only=hparams.input_only, steps=hparams.steps)

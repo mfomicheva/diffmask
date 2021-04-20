@@ -16,7 +16,7 @@ class TestAttributeQE(unittest.TestCase):
             hparams = make_hparams(data_dir, 'roberta', 'xlm-roberta-base')
             qe = train_model(data_dir, hparams)
             assert 'epoch=0.ckpt' in os.listdir(data_dir)
-            attributor = AttributeQE(qe, roberta_getter, roberta_setter, range(14), "cpu")
+            attributor = AttributeQE(qe, roberta_getter, roberta_setter, range(14), "cpu", batch_size=2)
             attributor.make_attributions(steps=1)
             data = attributor.make_data()
             assert len(data) == 2
