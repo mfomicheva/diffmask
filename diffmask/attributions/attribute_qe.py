@@ -174,7 +174,7 @@ class AttributeQE:
             raise NotImplementedError
         all_q_z_loc, all_q_z_scale = hidden_states_statistics(self.model, pretrained_model, self.getter, input_only=input_only)
         result = []
-        for batch_idx, sample in enumerate(torch.utils.data.DataLoader(self.dataset, batch_size=self.model.hparams.batch_size, num_workers=20)):
+        for batch_idx, sample in enumerate(torch.utils.data.DataLoader(self.dataset, batch_size=self.batch_size, num_workers=20)):
             input_ids, mask, _, labels = sample
             inputs_dict = {
                 'input_ids': input_ids.to(self.device),
