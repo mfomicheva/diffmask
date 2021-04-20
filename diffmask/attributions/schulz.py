@@ -47,7 +47,6 @@ def schulz_explainer(
         requires_grad=True,
         device=next(model.parameters()).device,
     )
-    print(alpha.shape)
     optimizer = torch.optim.RMSprop([alpha], lr=lr, centered=True)
 
     t = trange(steps) if verbose else range(steps)
