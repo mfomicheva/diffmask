@@ -1,12 +1,9 @@
 import torch
 
-from collections import defaultdict
-
 
 def confusion_matrix(y_pred, y_true):
     device = y_pred.device
-    labels = max(y_pred.max().item() + 1, y_true.max().item() + 1)
-
+    labels = max(max(y_pred.max().item() + 1, y_true.max().item() + 1), 2)
     return (
         (
             torch.stack((y_true, y_pred), -1).unsqueeze(-2).unsqueeze(-2)
