@@ -4,46 +4,49 @@ import numpy as np
 from diffmask.models.quality_estimation import QualityEstimationRegression
 from diffmask.models.quality_estimation import QualityEstimationBinaryClassificationBert
 from diffmask.models.quality_estimation import QualityEstimationBinaryClassificationRoberta
-from diffmask.utils.getter_setter import roberta_getter, roberta_setter
-from diffmask.attributions.attribute_qe import AttributeQE
-from diffmask.options import make_parser
+from diffmask.options import make_attributions_parser
+
+from diffmask.attributions.schulz import qe_roberta_schulz_explainer
+from diffmask.attributions.guan import qe_roberta_guan_explainer
+from diffmask.attributions.integrated_gradient import qe_integrated_gradient_explainer
+from diffmask.attributions.attention import qe_roberta_attention_explainer
+
+
+EXLAINERS = {
+    "schulz": qe_roberta_schulz_explainer,
+    "guan": qe_roberta_guan_explainer,
+    "intergrated_gradient": qe_integrated_gradient_explainer,
+    "attention": qe_roberta_attention_explainer,
+}
 
 
 if __name__ == '__main__':
-    parser = make_parser()
-    parser.add_argument("--num_layers", default=14, type=int)
-    parser.add_argument("--steps", default=50, type=int)
-    parser.add_argument("--input_only", default=False, action="store_true")
-    parser.add_argument("--save", default=None, type=str)
-    parser.add_argument("--data_split", default="valid", choices=["test", "valid"])
-    parser.add_argument("--batch_size_attributions", default=None, type=int)
-    hparams = parser.parse_args()
-    print(hparams)
-    device = "cuda" if hparams.use_cuda else "cpu"
+    parser = make_attributions_parser()
+    params = parser.parse_args()
+    print(params)
+    device = "cuda" if params.use_cuda else "cpu"
 
-    if hparams.seed is not None:
-        torch.manual_seed(hparams.seed)
-        np.random.seed(hparams.seed)
+    if params.seed is not None:
+        torch.manual_seed(params.seed)
+        np.random.seed(params.seed)
 
-    if hparams.num_labels > 1:
-        if hparams.architecture == 'roberta':
-            qe = QualityEstimationBinaryClassificationRoberta.load_from_checkpoint(hparams.model_path).to(device)
-        elif hparams.architecture == 'bert':
-            qe = QualityEstimationBinaryClassificationBert.load_from_checkpoint(hparams.model_path).to(device)
+    if params.num_labels > 1:
+        if params.architecture == 'roberta':
+            qe = QualityEstimationBinaryClassificationRoberta.load_from_checkpoint(params.model_path).to(device)
+        elif params.architecture == 'bert':
+            qe = QualityEstimationBinaryClassificationBert.load_from_checkpoint(params.model_path).to(device)
         else:
             raise ValueError
     else:
-        qe = QualityEstimationRegression.load_from_checkpoint(hparams.model_path).to(device)
-    qe.hparams = hparams  # in case test path changed
+        qe = QualityEstimationRegression.load_from_checkpoint(params.model_path).to(device)
 
     qe.freeze()
     qe.prepare_data()
 
-    layer_indexes = list(range(hparams.num_layers))
-    tensor_dataset = qe.test_dataset if hparams.data_split == 'test' else qe.val_dataset
-    text_dataset = qe.test_dataset_orig if hparams.data_split == 'test' else qe.val_dataset_orig
-    attribute_qe = AttributeQE(
-        qe, tensor_dataset, text_dataset, roberta_getter, roberta_setter, layer_indexes, device,
-        batch_size=hparams.batch_size_attributions
+    tensor_dataset = qe.test_dataset if params.data_split == 'test' else qe.val_dataset
+    text_dataset = qe.test_dataset_orig if params.data_split == 'test' else qe.val_dataset_orig
+    attributions = EXLAINERS[params.explainer](
+        qe, tensor_dataset, save=params.save, input_only=params.input_only, steps=params.steps,
+        batch_size=params.batch_size, num_layers=params.num_layers, learning_rate=params.lr,
+        aux_loss_weight=params.aux_loss_weight
     )
-    attribute_qe.make_attributions(save=hparams.save, input_only=hparams.input_only, steps=hparams.steps)

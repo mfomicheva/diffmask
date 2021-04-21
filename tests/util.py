@@ -7,7 +7,7 @@ import pytorch_lightning as pl
 from diffmask.models.quality_estimation import QualityEstimationRegression
 from diffmask.models.quality_estimation import QualityEstimationBinaryClassificationRoberta
 from diffmask.models.quality_estimation import QualityEstimationBinaryClassificationBert
-from diffmask.options import make_parser
+from diffmask.options import make_train_parser, make_attributions_parser
 
 
 torch.manual_seed(1234)
@@ -36,8 +36,8 @@ def create_dummy_data(data_dir, file_prefix, num_examples=100, max_len=100):
     _make_files(data, num_examples, max_len, data_dir, file_prefix)
 
 
-def make_hparams(data_dir, architecture, pretrained_model_name, target_only=False, num_labels=2, val_loss='f1'):
-    parser = make_parser()
+def make_hparams_train(data_dir, architecture, pretrained_model_name, target_only=False, num_labels=2, val_loss='f1'):
+    parser = make_train_parser()
     parser.parse_known_args()
     input_args = [
         '--architecture', architecture,
@@ -52,6 +52,7 @@ def make_hparams(data_dir, architecture, pretrained_model_name, target_only=Fals
         '--word_labels_val_filename', os.path.join(data_dir, 'valid.tags'),
         '--model_path', os.path.join(data_dir),
         '--epochs', '1',
+        '--batch_size', '1',
         '--num_labels', str(num_labels),
         '--val_loss', val_loss,
     ]
@@ -60,8 +61,28 @@ def make_hparams(data_dir, architecture, pretrained_model_name, target_only=Fals
     return parser.parse_args(input_args)
 
 
+def make_hparams_attribute(data_dir, architecture, pretrained_model_name, target_only=False, num_labels=2, val_loss='f1'):
+    parser = make_attributions_parser()
+    parser.parse_known_args()
+    input_args = [
+        '--architecture', architecture,
+        '--src_train_filename', os.path.join(data_dir, 'train.src'),
+        '--tgt_train_filename', os.path.join(data_dir, 'train.tgt'),
+        '--labels_train_filename', os.path.join(data_dir, 'train.labels'),
+        '--word_labels_train_filename', os.path.join(data_dir, 'train.tags'),
+        '--src_val_filename', os.path.join(data_dir, 'valid.src'),
+        '--tgt_val_filename', os.path.join(data_dir, 'valid.tgt'),
+        '--labels_val_filename', os.path.join(data_dir, 'valid.labels'),
+        '--word_labels_val_filename', os.path.join(data_dir, 'valid.tags'),
+        '--model_path', os.path.join(data_dir),
+    ]
+    if target_only:
+        input_args.append('--target_only')
+    return parser.parse_args(input_args)
+
+
 def train_model(data_dir, hparams):
-    create_dummy_data(data_dir, 'train', num_examples=10)
+    create_dummy_data(data_dir, 'train', num_examples=2)
     create_dummy_data(data_dir, 'valid', num_examples=2)
     checkpoint_callback = pl.callbacks.ModelCheckpoint(
         filepath=hparams.model_path,
@@ -73,9 +94,9 @@ def train_model(data_dir, hparams):
         qe = QualityEstimationRegression(hparams)
     elif hparams.num_labels == 2:
         if hparams.architecture == 'roberta':
-            qe = QualityEstimationBinaryClassificationRoberta(hparams)
+            qe = QualityEstimationBinaryClassificationRoberta(hparams, num_workers=1)
         elif hparams.architecture == 'bert':
-            qe = QualityEstimationBinaryClassificationBert(hparams)
+            qe = QualityEstimationBinaryClassificationBert(hparams, num_workers=1)
         else:
             raise ValueError
     else:

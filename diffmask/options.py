@@ -1,7 +1,7 @@
 import argparse
 
 
-def make_parser():
+def make_train_parser():
     parser = argparse.ArgumentParser()
     parser.add_argument("--use_cuda", action='store_true', default=False)
     parser.add_argument("--model", type=str, default="xlm-roberta-base", choices=["bert-base-multilingual-cased", "xlm-roberta-base"])
@@ -30,4 +30,23 @@ def make_parser():
     parser.add_argument("--clip_grad", default=1., type=float)
     parser.add_argument("--warmup_percentage", default=0., type=float, help="Percentage of iterations for warmup")
     parser.add_argument("--weight_decay", default=0., type=float,)
+    return parser
+
+
+def make_attributions_parser():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--use_cuda", action='store_true', default=False)
+    parser.add_argument("--num_layers", default=14, type=int)
+    parser.add_argument("--num_labels", default=2, type=int)
+    parser.add_argument("--model_path", type=str)
+    parser.add_argument("--architecture", type=str, default="roberta", choices=["bert", "roberta"])
+    parser.add_argument("--steps", default=50, type=int)
+    parser.add_argument("--input_only", default=False, action="store_true")
+    parser.add_argument("--save", default=None, type=str)
+    parser.add_argument("--data_split", default="valid", choices=["test", "valid"])
+    parser.add_argument("--batch_size", default=None, type=int)
+    parser.add_argument("--explainer", default="schulz")
+    parser.add_argument("--lr", default=1e-1, type=float)
+    parser.add_argument("--aux_loss_weight", default=10, type=int)
+    parser.add_argument("--seed", default=None, type=int)
     return parser

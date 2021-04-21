@@ -71,7 +71,7 @@ def load_sent_level(
 
 
 class QualityEstimation(pl.LightningModule):
-    def __init__(self, hparams):
+    def __init__(self, hparams, num_workers=20):
         super().__init__()
         self.hparams = hparams
         self.train_dataset = None
@@ -82,6 +82,7 @@ class QualityEstimation(pl.LightningModule):
         self.test_dataset_orig = None
         self.regression = False
         self.tokenizer = None
+        self.num_workers = num_workers
 
     def prepare_data(self):
         if self.hparams.src_train_filename is not None:
@@ -119,17 +120,18 @@ class QualityEstimation(pl.LightningModule):
         sampler = self.make_sampler() if self.hparams.class_weighting else None
         shuffle = False if sampler else True
         return torch.utils.data.DataLoader(
-            self.train_dataset, batch_size=self.hparams.batch_size, shuffle=shuffle, sampler=sampler, num_workers=20,
+            self.train_dataset, batch_size=self.hparams.batch_size, shuffle=shuffle, sampler=sampler,
+            num_workers=self.num_workers,
         )
 
     def val_dataloader(self):
         return torch.utils.data.DataLoader(
-            self.val_dataset, batch_size=self.hparams.batch_size, num_workers=20,
+            self.val_dataset, batch_size=self.hparams.batch_size, num_workers=self.num_workers,
         )
 
     def test_dataloader(self):
         return torch.utils.data.DataLoader(
-            self.test_dataset, batch_size=self.hparams.batch_size, num_workers=20,
+            self.test_dataset, batch_size=self.hparams.batch_size, num_workers=self.num_workers,
         )
 
     def training_step(self, batch, batch_idx=None):
@@ -220,8 +222,8 @@ class QualityEstimationBinaryClassification(QualityEstimation):
 
 class QualityEstimationBinaryClassificationRoberta(QualityEstimationBinaryClassification):
 
-    def __init__(self, hparams):
-        super().__init__(hparams)
+    def __init__(self, hparams, num_workers=20):
+        super().__init__(hparams, num_workers=num_workers)
 
         config = XLMRobertaConfig.from_pretrained(self.hparams.model)
         config.num_labels = 2
@@ -234,8 +236,8 @@ class QualityEstimationBinaryClassificationRoberta(QualityEstimationBinaryClassi
 
 class QualityEstimationBinaryClassificationBert(QualityEstimationBinaryClassification):
 
-    def __init__(self, hparams):
-        super().__init__(hparams)
+    def __init__(self, hparams, num_workers=20):
+        super().__init__(hparams, num_workers=num_workers)
 
         config = BertConfig.from_pretrained(self.hparams.model)
         config.num_labels = 2
@@ -248,8 +250,8 @@ class QualityEstimationBinaryClassificationBert(QualityEstimationBinaryClassific
 
 class QualityEstimationRegression(QualityEstimation):
 
-    def __init__(self, hparams):
-        super().__init__(hparams)
+    def __init__(self, hparams, num_workers=20):
+        super().__init__(hparams, num_workers=num_workers)
 
         config = XLMRobertaConfig.from_pretrained(self.hparams.model)
         config.num_labels = 1

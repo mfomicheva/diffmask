@@ -1,13 +1,16 @@
+import pickle
 import torch
-from tqdm.auto import tqdm, trange
-from ..utils.getter_setter import (
+
+from tqdm.auto import trange
+
+from diffmask.attributions.hidden_states_stats import hidden_states_statistics
+from diffmask.utils.getter_setter import (
     roberta_getter,
+    roberta_setter,
     bert_getter,
     bert_setter,
     gru_getter,
     gru_setter,
-    toy_getter,
-    toy_setter,
 )
 
 
@@ -95,75 +98,54 @@ def schulz_explainer(
     return attributions
 
 
-def hidden_states_statistics(model, pretrained_model, getter, input_only):
-    return transformers_hidden_states_statistics(model, pretrained_model, getter, input_only=input_only)
+def qe_roberta_schulz_explainer(
+        qe_model, tensor_dataset, verbose=False, save=None, load=None, input_only=True, steps=50, batch_size=1,
+        num_layers=14, learning_rate=1e-1, aux_loss_weight=10, num_workers=20
+):
+    if load is not None:
+        result = pickle.load(open(load, 'rb'))
+        return result
 
-
-def transformers_hidden_states_statistics(model, transformers_model, getter, input_only=True):
-
-    with torch.no_grad():
-        all_hidden_states = []
-        for batch in tqdm(model.train_dataloader()):
-            batch = tuple(e.to(next(model.parameters()).device) for e in batch)
-            if input_only:
-                hidden_states = [transformers_model.embeddings.word_embeddings(batch[0])]
-            else:
-                _, hidden_states = getter(
-                    model.net,
-                    {
-                        "input_ids": batch[0],
-                        "attention_mask": batch[1],
-                        **({"token_type_ids": batch[2]} if len(batch) == 5 else {}),
-                    },
-                )
-            all_hidden_states.append(torch.stack(hidden_states).cpu())
-
-        all_q_z_loc = sum([e.sum(1) for e in all_hidden_states]) / sum(
-            [e.shape[1] for e in all_hidden_states]
-        )
-        all_q_z_scale = (
-            sum(((all_q_z_loc.unsqueeze(1) - e) ** 2).sum(1) for e in all_hidden_states)
-            / sum([e.shape[1] for e in all_hidden_states])
-        ).sqrt()
-
-    return all_q_z_loc, all_q_z_scale
-
-
-def sst_gru_hidden_states_statistics(model):
-
-    with torch.no_grad():
-        all_hidden_states = []
-        for batch in tqdm(model.train_dataloader()):
-            batch = tuple(e.to(next(model.parameters()).device) for e in batch)
-            _, hidden_states = gru_getter(
-                model.net, {"input_ids": batch[0], "mask": batch[1],}
+    device = next(qe_model.parameters()).device
+    all_q_z_loc, all_q_z_scale = hidden_states_statistics(qe_model, qe_model.net.roberta, roberta_getter, input_only=input_only)
+    result = []
+    loader = torch.utils.data.DataLoader(tensor_dataset, batch_size=batch_size, num_workers=num_workers)
+    for batch_idx, sample in enumerate(loader):
+        input_ids, mask, _, labels = sample
+        inputs_dict = {
+            'input_ids': input_ids.to(device),
+            'attention_mask': mask.to(device),
+            'labels': labels.to(device),
+        }
+        all_attributions = []
+        for layer_idx in range(num_layers):
+            all_q_z_idx = 0 if input_only else layer_idx
+            kwargs = schulz_loss(
+                q_z_loc=all_q_z_loc[all_q_z_idx].unsqueeze(0).to(device),
+                q_z_scale=all_q_z_scale[all_q_z_idx].unsqueeze(0).to(device),
+                verbose=verbose,
             )
-            all_hidden_states.append(torch.stack(hidden_states).cpu())
-
-        all_hidden_states = torch.cat(all_hidden_states, 1)
-        all_q_z_loc = all_hidden_states.mean(1)
-        all_q_z_scale = all_hidden_states.std(1)
-
-        return all_q_z_loc, all_q_z_scale
-
-
-def toy_hidden_states_statistics(model):
-
-    all_hidden_states = [[], [], []]
-    for batch in tqdm(model.train_dataloader()):
-        batch = tuple(e.to(next(model.parameters()).device) for e in batch)
-        _, hidden_states = toy_getter(
-            model, {"query_ids": batch[0], "input_ids": batch[1], "mask": batch[2],}
-        )
-        all_hidden_states[0].append(hidden_states[0].cpu())
-        all_hidden_states[1].append(hidden_states[1].cpu())
-        all_hidden_states[2].append(hidden_states[2].cpu())
-
-    all_hidden_states = [torch.cat(e, 0) for e in all_hidden_states]
-    all_q_z_loc = [e.mean(0) for e in all_hidden_states]
-    all_q_z_scale = [e.std(0) for e in all_hidden_states]
-
-    return all_q_z_loc, all_q_z_scale
+            layer_attributions = schulz_explainer(
+                qe_model.net,
+                inputs_dict=inputs_dict,
+                getter=roberta_getter,
+                setter=roberta_setter,
+                hidden_state_idx=layer_idx,
+                steps=steps,
+                lr=learning_rate,
+                la=aux_loss_weight,
+                **kwargs,
+            )
+            all_attributions.append(layer_attributions.unsqueeze(-1))
+        all_attributions = torch.cat(all_attributions, -1)  # B, T, L
+        for bidx in range(all_attributions.shape[0]):
+            try:
+                result.append(all_attributions[bidx, :, :])  # T, L
+            except IndexError:
+                break
+    if save is not None:
+        pickle.dump(result, open(save, 'wb'))
+    return result
 
 
 def sst_bert_schulz_explainer(

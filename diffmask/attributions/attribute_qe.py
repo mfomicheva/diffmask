@@ -1,8 +1,5 @@
 import torch
-import pickle
 
-from diffmask.attributions.schulz import schulz_explainer, hidden_states_statistics, schulz_loss
-from diffmask.attributions.guan import guan_explainer, guan_loss
 from diffmask.utils.util import map_bpe_moses, map_bpe_moses_bert
 from diffmask.utils.exceptions import TokenizationError
 
@@ -143,134 +140,65 @@ class SampleAttributionsMapping:
         return [a for i, a in enumerate(attributions) if bpe_moses_mapping[i] in ids]
 
 
-class AttributeQE:
-
-    def __init__(
-            self, model, tensor_dataset, text_dataset, getter, setter, layer_indexes, device, guan=False,
-            batch_size=None
-    ):
-        self.model = model
-        self.getter = getter
-        self.setter = setter
-        self.layer_indexes = layer_indexes
-        self.device = device
-
-        self.tensor_dataset = tensor_dataset
-        self.text_dataset = text_dataset
-        self.attributions = None
-        self.explainer_fn = guan_explainer if guan else schulz_explainer
-        self.explainer_loss = guan_loss if guan else schulz_loss
-
-        self.batch_size = batch_size if batch_size is not None else self.model.hparams.batch_size
-
-    def make_attributions(self, verbose=False, save=None, load=None, input_only=True, steps=50):
-
-        if load is not None:
-            self.attributions = pickle.load(open(load, 'rb'))
-            return
-        if self.model.hparams.architecture == 'roberta':
-            pretrained_model = self.model.net.roberta
-        elif self.model.hparams.architecture == 'bert':
-            pretrained_model = self.model.net.bert
-        else:
-            raise NotImplementedError
-        all_q_z_loc, all_q_z_scale = hidden_states_statistics(self.model, pretrained_model, self.getter, input_only=input_only)
-        result = []
-        for batch_idx, sample in enumerate(torch.utils.data.DataLoader(self.tensor_dataset, batch_size=self.batch_size, num_workers=20)):
-            input_ids, mask, _, labels = sample
-            inputs_dict = {
-                'input_ids': input_ids.to(self.device),
-                'attention_mask': mask.to(self.device),
-                'labels': labels.to(self.device),
-            }
-            all_attributions = []
-            for layer_idx in self.layer_indexes:
-                all_q_z_idx = 0 if input_only else layer_idx
-                kwargs = self.explainer_loss(
-                    q_z_loc=all_q_z_loc[all_q_z_idx].unsqueeze(0).to(self.device),
-                    q_z_scale=all_q_z_scale[all_q_z_idx].unsqueeze(0).to(self.device),
-                    verbose=verbose,
-                )
-                layer_attributions = self.explainer_fn(
-                    self.model.net,
-                    inputs_dict=inputs_dict,
-                    getter=self.getter,
-                    setter=self.setter,
-                    hidden_state_idx=layer_idx,
-                    steps=steps,
-                    lr=1e-1,
-                    la=10,
-                    **kwargs,
-                )
-                all_attributions.append(layer_attributions.unsqueeze(-1))
-            all_attributions = torch.cat(all_attributions, -1)  # B, T, L
-            for bidx in range(all_attributions.shape[0]):
-                try:
-                    result.append(all_attributions[bidx, :, :])  # T, L
-                except IndexError:
-                    break
-        if save is not None:
-            pickle.dump(result, open(save, 'wb'))
-        self.attributions = result
-
-    def make_data(self, silent=False, normalize=False, invert=False, target_only=False, predictions=None):
-        res = []
-        tokens_mapper_fn = map_bpe_moses if self.model.hparams.architecture == 'roberta' else map_bpe_moses_bert
-        for sentid in range(len(self.attributions)):
-            source_tokens = self.text_dataset[sentid][0].split()
-            target_tokens = self.text_dataset[sentid][1].split()
-            word_labels = self.text_dataset[sentid][3]
-            sent_pred = predictions[sentid] if predictions is not None else None
-            if len(source_tokens) == 0 or len(target_tokens) == 0:
-                if not silent:
-                    print('Empty segment! Skipping...')
-                continue
-            try:
-                sample_attributions, mapped_source, mapped_target = self.format_sample_attributions(
-                    target_tokens, word_labels, self.tensor_dataset[sentid], self.attributions[sentid], self.model.tokenizer,
-                    tokens_mapper_fn, normalize=normalize, invert=invert, target_only=target_only,
-                    source_tokens=source_tokens, sent_pred=sent_pred,
-                )
-            except TokenizationError:
-                if not silent:
-                    print('BPE mapping error! Skipping...')
-                continue
-            try:
-                assert len(word_labels) == len(mapped_target.attributions_mapped[0])
-            except AssertionError:
-                if not silent:
-                    print('Sequence too long. Skipping')
-                continue
-            res.append((sample_attributions, mapped_source, mapped_target,))
-        return res
-
-    @staticmethod
-    def format_sample_attributions(
-            tokens, word_labels, sample, attributions, tokenizer, token_mapper_fn, normalize=False, invert=False,
-            target_only=False, source_tokens=None, sent_pred=None
-    ):
-        input_ids, mask, _, sent_labels = sample
-        sample_attributions = SampleAttributions(
-            input_ids, attributions, mask, tokenizer, sent_labels.item(), sent_pred=sent_pred)
-        sample_attributions.format_attributions(normalize=normalize, invert=invert, target_only=target_only)
-        mapped_source = None
-        if not target_only:
-            mapped_source = SampleAttributionsMapping(
-                sample_attributions.input_ids_source,
-                sample_attributions.attributions_source,
-                source_tokens, word_labels, sent_labels.item(), tokenizer, token_mapper_fn, sent_pred=sent_pred
+def make_data(tensor_dataset, text_dataset, qe_model, attributions, silent=False, normalize=False,
+        invert=False, target_only=False, predictions=None):
+    res = []
+    tokens_mapper_fn = map_bpe_moses if qe_model.hparams.architecture == 'roberta' else map_bpe_moses_bert
+    for sentid in range(len(attributions)):
+        source_tokens = text_dataset[sentid][0].split()
+        target_tokens = text_dataset[sentid][1].split()
+        word_labels = text_dataset[sentid][3]
+        sent_pred = predictions[sentid] if predictions is not None else None
+        if len(source_tokens) == 0 or len(target_tokens) == 0:
+            if not silent:
+                print('Empty segment! Skipping...')
+            continue
+        try:
+            sample_attributions, mapped_source, mapped_target = format_sample_attributions(
+                target_tokens, word_labels, tensor_dataset[sentid], attributions[sentid], qe_model.tokenizer,
+                tokens_mapper_fn, normalize=normalize, invert=invert, target_only=target_only,
+                source_tokens=source_tokens, sent_pred=sent_pred,
             )
-            try:
-                mapped_source.format_attributions()
-            except TokenizationError:
-                raise
-        mapped_target = SampleAttributionsMapping(
-            sample_attributions.input_ids_target,
-            sample_attributions.attributions_target,
-            tokens, word_labels, sent_labels.item(), tokenizer, token_mapper_fn, sent_pred=sent_pred
+        except TokenizationError:
+            if not silent:
+                print('BPE mapping error! Skipping...')
+            continue
+        try:
+            assert len(word_labels) == len(mapped_target.attributions_mapped[0])
+        except AssertionError:
+            if not silent:
+                print('Sequence too long. Skipping')
+            continue
+        res.append((sample_attributions, mapped_source, mapped_target,))
+    return res
+
+
+def format_sample_attributions(
+        tokens, word_labels, sample, attributions, tokenizer, token_mapper_fn, normalize=False, invert=False,
+        target_only=False, source_tokens=None, sent_pred=None
+):
+    input_ids, mask, _, sent_labels = sample
+    sample_attributions = SampleAttributions(
+        input_ids, attributions, mask, tokenizer, sent_labels.item(), sent_pred=sent_pred)
+    sample_attributions.format_attributions(normalize=normalize, invert=invert, target_only=target_only)
+    mapped_source = None
+    if not target_only:
+        mapped_source = SampleAttributionsMapping(
+            sample_attributions.input_ids_source,
+            sample_attributions.attributions_source,
+            source_tokens, word_labels, sent_labels.item(), tokenizer, token_mapper_fn, sent_pred=sent_pred
         )
         try:
-            mapped_target.format_attributions()
+            mapped_source.format_attributions()
         except TokenizationError:
             raise
-        return sample_attributions, mapped_source, mapped_target
+    mapped_target = SampleAttributionsMapping(
+        sample_attributions.input_ids_target,
+        sample_attributions.attributions_target,
+        tokens, word_labels, sent_labels.item(), tokenizer, token_mapper_fn, sent_pred=sent_pred
+    )
+    try:
+        mapped_target.format_attributions()
+    except TokenizationError:
+        raise
+    return sample_attributions, mapped_source, mapped_target

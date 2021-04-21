@@ -6,11 +6,11 @@ import pytorch_lightning as pl
 from diffmask.models.quality_estimation import QualityEstimationRegression
 from diffmask.models.quality_estimation import QualityEstimationBinaryClassificationRoberta
 from diffmask.models.quality_estimation import QualityEstimationBinaryClassificationBert
-from diffmask.options import make_parser
+from diffmask.options import make_train_parser
 
 
 if __name__ == '__main__':
-    parser = make_parser()
+    parser = make_train_parser()
     hparams = parser.parse_args()
     print(hparams)
 

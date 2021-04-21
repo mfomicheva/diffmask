@@ -6,7 +6,7 @@ from transformers import XLMRobertaTokenizer, BertTokenizer
 
 from diffmask.models.quality_estimation import load_sent_level
 
-from tests.util import create_dummy_data, make_hparams, train_model
+from tests.util import create_dummy_data, make_hparams_train, train_model
 
 
 class TestQualityEstimationModel(unittest.TestCase):
@@ -53,24 +53,24 @@ class TestQualityEstimationModel(unittest.TestCase):
 
     def test_train_model(self):
         with tempfile.TemporaryDirectory("test_prepare_data") as data_dir:
-            hparams = make_hparams(data_dir, 'roberta', 'xlm-roberta-base')
+            hparams = make_hparams_train(data_dir, 'roberta', 'xlm-roberta-base')
             train_model(data_dir, hparams)
             assert 'epoch=0.ckpt' in os.listdir(data_dir)
 
     def test_train_model_regression(self):
         with tempfile.TemporaryDirectory("test_prepare_data") as data_dir:
-            hparams = make_hparams(data_dir, 'roberta', 'xlm-roberta-base', num_labels=1, val_loss='pearson',)
+            hparams = make_hparams_train(data_dir, 'roberta', 'xlm-roberta-base', num_labels=1, val_loss='pearson', )
             train_model(data_dir, hparams)
             assert 'epoch=0.ckpt' in os.listdir(data_dir)
 
     def test_train_model_bert(self):
         with tempfile.TemporaryDirectory("test_prepare_data") as data_dir:
-            hparams = make_hparams(data_dir, 'bert', 'bert-base-multilingual-cased')
+            hparams = make_hparams_train(data_dir, 'bert', 'bert-base-multilingual-cased')
             train_model(data_dir, hparams)
             assert 'epoch=0.ckpt' in os.listdir(data_dir)
 
     def test_train_model_target_only(self):
         with tempfile.TemporaryDirectory("test_prepare_data") as data_dir:
-            hparams = make_hparams(data_dir, 'roberta', 'xlm-roberta-base', target_only=True)
+            hparams = make_hparams_train(data_dir, 'roberta', 'xlm-roberta-base', target_only=True)
             train_model(data_dir, hparams)
             assert 'epoch=0.ckpt' in os.listdir(data_dir)
