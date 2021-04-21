@@ -1,3 +1,6 @@
+import torch
+import numpy as np
+
 from diffmask.models.quality_estimation import QualityEstimationRegression
 from diffmask.models.quality_estimation import QualityEstimationBinaryClassificationBert
 from diffmask.models.quality_estimation import QualityEstimationBinaryClassificationRoberta
@@ -17,6 +20,10 @@ if __name__ == '__main__':
     hparams = parser.parse_args()
     print(hparams)
     device = "cuda" if hparams.use_cuda else "cpu"
+
+    if hparams.seed is not None:
+        torch.manual_seed(hparams.seed)
+        np.random.seed(hparams.seed)
 
     if hparams.num_labels > 1:
         if hparams.architecture == 'roberta':

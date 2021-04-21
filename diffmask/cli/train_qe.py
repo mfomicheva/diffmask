@@ -1,4 +1,6 @@
+import torch
 import os
+import numpy as np
 import pytorch_lightning as pl
 
 from diffmask.models.quality_estimation import QualityEstimationRegression
@@ -11,6 +13,10 @@ if __name__ == '__main__':
     parser = make_parser()
     hparams = parser.parse_args()
     print(hparams)
+
+    if hparams.seed is not None:
+        torch.manual_seed(hparams.seed)
+        np.random.seed(hparams.seed)
 
     checkpoint_callback = pl.callbacks.ModelCheckpoint(
         filepath=hparams.model_path,

@@ -19,7 +19,7 @@ def make_parser():
     parser.add_argument("--labels_test_filename", type=str)
     parser.add_argument("--word_labels_test_filename", type=str, default=None)
     parser.add_argument("--batch_size", type=int, default=8)
-    parser.add_argument("--seed", type=float, default=0)
+    parser.add_argument("--seed", type=int, default=None)
     parser.add_argument("--model_path", type=str)
     parser.add_argument("--learning_rate", type=float, default=3e-5)
     parser.add_argument("--epochs", type=int, default=10)
