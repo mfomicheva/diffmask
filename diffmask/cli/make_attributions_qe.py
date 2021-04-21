@@ -33,7 +33,10 @@ if __name__ == '__main__':
     qe.prepare_data()
 
     layer_indexes = list(range(hparams.num_layers))
-    split = 'test' if hparams.src_test_filename is not None else 'valid'
+    tensor_dataset = qe.test_dataset if hparams.data_split == 'test' else 'valid'
+    text_dataset = qe.test_dataset_orig if hparams.data_split == 'test' else 'valid'
     attribute_qe = AttributeQE(
-        qe, roberta_getter, roberta_setter, layer_indexes, device, split=split, batch_size=hparams.batch_size_attributions)
+        qe, tensor_dataset, text_dataset, roberta_getter, roberta_setter, layer_indexes, device,
+        batch_size=hparams.batch_size_attributions
+    )
     attribute_qe.make_attributions(save=hparams.save, input_only=hparams.input_only, steps=hparams.steps)

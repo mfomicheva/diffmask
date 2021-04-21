@@ -145,16 +145,18 @@ class SampleAttributionsMapping:
 
 class AttributeQE:
 
-    def __init__(self, model, getter, setter, layer_indexes, device, split='valid', guan=False, batch_size=None):
+    def __init__(
+            self, model, tensor_dataset, text_dataset, getter, setter, layer_indexes, device, guan=False,
+            batch_size=None
+    ):
         self.model = model
         self.getter = getter
         self.setter = setter
         self.layer_indexes = layer_indexes
-        self.split = split
         self.device = device
 
-        self.text_dataset = self.model.test_dataset_orig if split == 'test' else self.model.val_dataset_orig
-        self.dataset = self.model.test_dataset if split == 'test' else self.model.val_dataset
+        self.tensor_dataset = tensor_dataset
+        self.text_dataset = text_dataset
         self.attributions = None
         self.explainer_fn = guan_explainer if guan else schulz_explainer
         self.explainer_loss = guan_loss if guan else schulz_loss
@@ -174,7 +176,7 @@ class AttributeQE:
             raise NotImplementedError
         all_q_z_loc, all_q_z_scale = hidden_states_statistics(self.model, pretrained_model, self.getter, input_only=input_only)
         result = []
-        for batch_idx, sample in enumerate(torch.utils.data.DataLoader(self.dataset, batch_size=self.batch_size, num_workers=20)):
+        for batch_idx, sample in enumerate(torch.utils.data.DataLoader(self.tensor_dataset, batch_size=self.batch_size, num_workers=20)):
             input_ids, mask, _, labels = sample
             inputs_dict = {
                 'input_ids': input_ids.to(self.device),
@@ -225,7 +227,7 @@ class AttributeQE:
                 continue
             try:
                 sample_attributions, mapped_source, mapped_target = self.format_sample_attributions(
-                    target_tokens, word_labels, self.dataset[sentid], self.attributions[sentid], self.model.tokenizer,
+                    target_tokens, word_labels, self.tensor_dataset[sentid], self.attributions[sentid], self.model.tokenizer,
                     tokens_mapper_fn, normalize=normalize, invert=invert, target_only=target_only,
                     source_tokens=source_tokens, sent_pred=sent_pred,
                 )
