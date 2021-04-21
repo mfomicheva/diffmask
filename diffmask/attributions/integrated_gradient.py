@@ -75,7 +75,7 @@ def qe_integrated_gradient_explainer(
                 label_getter=label_getter,
                 hidden_state_idx=layer_idx,
                 steps=steps,
-            )
+            ).sum(-1).abs()
             all_attributions.append(layer_attributions.unsqueeze(-1))
         all_attributions = torch.cat(all_attributions, -1)  # B, T, L
         for bidx in range(all_attributions.shape[0]):
