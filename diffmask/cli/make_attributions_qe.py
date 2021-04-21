@@ -33,8 +33,8 @@ if __name__ == '__main__':
     qe.prepare_data()
 
     layer_indexes = list(range(hparams.num_layers))
-    tensor_dataset = qe.test_dataset if hparams.data_split == 'test' else 'valid'
-    text_dataset = qe.test_dataset_orig if hparams.data_split == 'test' else 'valid'
+    tensor_dataset = qe.test_dataset if hparams.data_split == 'test' else qe.val_dataset
+    text_dataset = qe.test_dataset_orig if hparams.data_split == 'test' else qe.val_dataset_orig
     attribute_qe = AttributeQE(
         qe, tensor_dataset, text_dataset, roberta_getter, roberta_setter, layer_indexes, device,
         batch_size=hparams.batch_size_attributions
