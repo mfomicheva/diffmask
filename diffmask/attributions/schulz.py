@@ -100,14 +100,18 @@ def schulz_explainer(
 
 def qe_roberta_schulz_explainer(
         qe_model, tensor_dataset, verbose=False, save=None, load=None, input_only=True, steps=50, batch_size=1,
-        num_layers=14, learning_rate=1e-1, aux_loss_weight=10, num_workers=20
+        num_layers=14, learning_rate=1e-1, aux_loss_weight=10, num_workers=20, hidden_states_stats=None,
 ):
     if load is not None:
         result = pickle.load(open(load, 'rb'))
         return result
 
     device = next(qe_model.parameters()).device
-    all_q_z_loc, all_q_z_scale = hidden_states_statistics(qe_model, qe_model.net.roberta, roberta_getter, input_only=input_only)
+    if hidden_states_stats is not None:
+        all_q_z_loc, all_q_z_scale = hidden_states_stats
+    else:
+        all_q_z_loc, all_q_z_scale = hidden_states_statistics(
+            qe_model, qe_model.net.roberta, roberta_getter, input_only=input_only)
     result = []
     loader = torch.utils.data.DataLoader(tensor_dataset, batch_size=batch_size, num_workers=num_workers)
     for batch_idx, sample in enumerate(loader):
