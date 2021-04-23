@@ -36,7 +36,7 @@ def qe_roberta_attention_explainer(
              attributions_att,
              torch.full_like(attributions_att[..., 0:1], float("nan"))), -1
         )
-        attributions_all_batched.append(attributions_att)
+        attributions_all_batched.append(attributions_att.squeeze())
 
     if save is not None:
         pickle.dump(attributions_all_batched, open(save, 'wb'))
