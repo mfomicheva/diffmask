@@ -2,7 +2,8 @@ import pickle
 import torch
 from tqdm.auto import tqdm
 from ..utils.getter_setter import (
-    label_getter,
+    label_getter_clf,
+    label_getter_reg,
     roberta_getter,
     roberta_setter,
     bert_getter,
@@ -58,6 +59,7 @@ def qe_integrated_gradient_explainer(
     device = next(qe_model.parameters()).device
     result = []
     loader = torch.utils.data.DataLoader(tensor_dataset, batch_size=batch_size, num_workers=num_workers)
+    label_getter_fn = label_getter_reg if qe_model.hparams.num_labels == 1 else label_getter_clf
     for batch_idx, sample in enumerate(loader):
         input_ids, mask, _, labels = sample
         inputs_dict = {
@@ -72,7 +74,7 @@ def qe_integrated_gradient_explainer(
                 inputs_dict=inputs_dict,
                 getter=roberta_getter,
                 setter=roberta_setter,
-                label_getter=label_getter,
+                label_getter=label_getter_fn,
                 hidden_state_idx=layer_idx,
                 steps=steps,
             ).sum(-1).abs()
@@ -98,7 +100,7 @@ def sst_bert_integrated_gradient(model, inputs_dict, hidden_state_idx=0, steps=1
         },
         getter=bert_getter,
         setter=bert_setter,
-        label_getter=label_getter,
+        label_getter=label_getter_clf,
         hidden_state_idx=hidden_state_idx,
         steps=steps,
     )

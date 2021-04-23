@@ -111,10 +111,15 @@ def bert_getter(model, inputs_dict, forward_fn=None):
     return transformers_getter(model, model.bert, inputs_dict, forward_fn=forward_fn)
 
 
-def label_getter(outputs, inputs_dict):
+def label_getter_clf(outputs, inputs_dict):
     # this is only for binary classification
     # select the logit corresponding to the correct label
     return outputs[1][range(len(outputs[1])), inputs_dict["labels"]]
+
+
+def label_getter_reg(outputs, inputs_dict):
+    # this is only for regression
+    return outputs[1]
 
 
 # def bert_setter(model, inputs_dict, hidden_states, forward_fn=None):
