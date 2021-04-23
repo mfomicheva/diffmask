@@ -10,7 +10,7 @@ def qe_roberta_attention_explainer(
     qe_model.net.roberta.encoder.output_attentions = True
     for l in qe_model.net.roberta.encoder.layer:
         l.attention.self.output_attentions = True
-
+    assert batch_size == 1
     loader = torch.utils.data.DataLoader(tensor_dataset, batch_size=batch_size, num_workers=num_workers)
     attributions_all_batched = []
     for batch_idx, sample in enumerate(loader):
@@ -38,18 +38,10 @@ def qe_roberta_attention_explainer(
         )
         attributions_all_batched.append(attributions_att)
 
-    attributions_all_batched = torch.cat(attributions_all_batched, -1)  # B, T, L
-    result = []
-    for bidx in range(attributions_all_batched.shape[0]):
-            try:
-                result.append(attributions_all_batched[bidx, :, :])  # T, L
-            except IndexError:
-                break
     if save is not None:
-        pickle.dump(result, open(save, 'wb'))
+        pickle.dump(attributions_all_batched, open(save, 'wb'))
 
     qe_model.net.roberta.encoder.output_attentions = False
     for l in qe_model.net.roberta.encoder.layer:
         l.attention.self.output_attentions = False
-
-    return result
+    return attributions_all_batched
