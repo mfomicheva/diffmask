@@ -119,7 +119,7 @@ def label_getter_clf(outputs, inputs_dict):
 
 def label_getter_reg(outputs, inputs_dict):
     # this is only for regression
-    return outputs[1]
+    return outputs[1].squeeze()
 
 
 # def bert_setter(model, inputs_dict, hidden_states, forward_fn=None):
