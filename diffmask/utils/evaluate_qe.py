@@ -98,6 +98,7 @@ class EvaluateQE:
         return x, y, score
 
     def auc_score_per_sample(self, data, layer_id, auprc=False, verbose=False):
+        data = list(zip(*data))[2]
         if auprc:
             curve_fn = self.precision_recall_curve
             score_fn = average_precision_score
@@ -106,7 +107,7 @@ class EvaluateQE:
             score_fn = roc_auc_score
         aucs = []
         aucs_rand = []
-        for (sample, sample_source_mapped, sample_target_mapped) in data:
+        for sample in data:
             attributions = sample.attributions_mapped[layer_id]
             rand = torch.rand((len(attributions),)).tolist()
             labels = sample.word_labels
