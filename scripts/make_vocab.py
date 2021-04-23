@@ -25,7 +25,7 @@ for line in open(args.infile):
 
 print('Writing vocabulary with counts...')
 with open(args.outfile, 'w') as o:
-    for token in sorted(result, key=lambda c: c[1], reverse=True):
+    for token, count in sorted(result.items(), key=lambda c: c[1], reverse=True):
         if result[token] < args.min_freq:
             break
         o.write('{}\t{}\n'.format(token, result[token]))
