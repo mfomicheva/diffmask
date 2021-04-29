@@ -35,7 +35,6 @@ def explain_instance(explainer, qe_model, text_a, text_b, mode='regression'):
         return res
     preds = predict(qe_model, [text_a], [text_b], torch.zeros((1,)))
     exp = explainer.explain_instance(text_b, predict_fn, num_features=len(text_b.split()), labels=(1,))
-    exp.show_in_notebook()
     return preds, exp.as_map()
 
 
