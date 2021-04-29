@@ -20,28 +20,10 @@ from transformers import (
 from ..utils.metrics import accuracy_precision_recall_f1, matthews_corr_coef
 
 
-def load_sent_level(
-        path_src, path_tgt, path_labels, tokenizer, architecture, regression=False, max_seq_length=128,
-        path_word_labels=None, target_only=False,
+def make_tensors(
+        srcs, tgts, labels, tokenizer, architecture, word_labels=None, regression=False, max_seq_length=128,
+        target_only=False,
 ):
-
-    def _read_file(path, label=False):
-        return [float(l.strip()) if label else l.strip() for l in open(path)]
-
-    def _read_word_labels(path):
-        out = []
-        for l in open(path):
-            out.append([int(val.strip()) for val in l.split()])
-        return out
-
-    srcs = _read_file(path_src)
-    tgts = _read_file(path_tgt)
-    labels = _read_file(path_labels, label=True)
-    assert len(srcs) == len(tgts) == len(labels)
-    word_labels = None
-    if path_word_labels is not None:
-        word_labels = _read_word_labels(path_word_labels)
-        assert len(word_labels) == len(srcs)
     data = []
     data_text = []
     for i in range(len(srcs)):
@@ -68,6 +50,34 @@ def load_sent_level(
         torch.tensor(labels, dtype=torch.float32 if regression else torch.long),
     ]
     return torch.utils.data.TensorDataset(*tensor_dataset), data_text
+
+
+def load_sent_level(
+        path_src, path_tgt, path_labels, tokenizer, architecture, regression=False, max_seq_length=128,
+        path_word_labels=None, target_only=False,
+):
+
+    def _read_file(path, label=False):
+        return [float(l.strip()) if label else l.strip() for l in open(path)]
+
+    def _read_word_labels(path):
+        out = []
+        for l in open(path):
+            out.append([int(val.strip()) for val in l.split()])
+        return out
+
+    srcs = _read_file(path_src)
+    tgts = _read_file(path_tgt)
+    labels = _read_file(path_labels, label=True)
+    assert len(srcs) == len(tgts) == len(labels)
+    word_labels = None
+    if path_word_labels is not None:
+        word_labels = _read_word_labels(path_word_labels)
+        assert len(word_labels) == len(srcs)
+    return make_tensors(
+        srcs, tgts, labels, tokenizer, architecture, word_labels=word_labels, regression=regression,
+        max_seq_length=max_seq_length, target_only=target_only,
+    )
 
 
 class QualityEstimation(pl.LightningModule):
