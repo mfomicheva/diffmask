@@ -2,6 +2,8 @@ import pickle
 import torch
 import numpy as np
 
+from tqdm import tqdm
+
 from diffmask.models.quality_estimation import make_tensors
 from diffmask.models.quality_estimation import QualityEstimationRegression
 
@@ -45,7 +47,7 @@ def qe_lime_explainer(
     explainer = LimeTextExplainer(class_names=['score', 'score'], bow=False, split_expression=' ')
     mode = 'regression' if type(qe_model) is QualityEstimationRegression else 'classification'
     result = []
-    for idx in range(len(text_dataset)):
+    for idx in tqdm(range(len(text_dataset))):
         src = text_dataset[idx][0]
         tgt = text_dataset[idx][1]
         pred, exp = explain_instance(explainer, qe_model, src, tgt, mode=mode)
