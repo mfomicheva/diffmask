@@ -99,8 +99,8 @@ def schulz_explainer(
 
 
 def qe_roberta_schulz_explainer(
-        qe_model, tensor_dataset, verbose=False, save=None, load=None, input_only=True, steps=50, batch_size=1,
-        num_layers=14, learning_rate=1e-1, aux_loss_weight=10, num_workers=20, hidden_states_stats=None,
+        qe_model, tensor_dataset, text_dataset, verbose=False, save=None, load=None, input_only=True, steps=50,
+        batch_size=1, num_layers=14, learning_rate=1e-1, aux_loss_weight=10, num_workers=20, hidden_states_stats=None,
 ):
     if load is not None:
         result = pickle.load(open(load, 'rb'))

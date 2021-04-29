@@ -22,7 +22,7 @@ class TestAttributeQE(unittest.TestCase):
             tensor_dataset = qe.val_dataset
             text_dataset = qe.val_dataset_orig
             attributions = qe_roberta_schulz_explainer(
-                qe, tensor_dataset, save=None, input_only=False, steps=1, batch_size=2,
+                qe, tensor_dataset, text_dataset, save=None, input_only=False, steps=1, batch_size=2,
                 num_layers=14, learning_rate=1e-1, aux_loss_weight=10, num_workers=1
             )
             data = make_data(tensor_dataset, text_dataset, qe, attributions)
@@ -40,7 +40,7 @@ class TestAttributeQE(unittest.TestCase):
             tensor_dataset = qe.val_dataset
             text_dataset = qe.val_dataset_orig
             attributions = qe_roberta_guan_explainer(
-                qe, tensor_dataset, save=None, steps=1, batch_size=2,
+                qe, tensor_dataset, text_dataset, save=None, steps=1, batch_size=2,
                 num_layers=14, learning_rate=1e-1, aux_loss_weight=10
             )
             data = make_data(tensor_dataset, text_dataset, qe, attributions)
@@ -54,7 +54,7 @@ class TestAttributeQE(unittest.TestCase):
             tensor_dataset = qe.val_dataset
             text_dataset = qe.val_dataset_orig
             attributions = qe_integrated_gradient_explainer(
-                qe, tensor_dataset, save=None, steps=1, batch_size=2,
+                qe, tensor_dataset, text_dataset, save=None, steps=1, batch_size=2,
                 num_layers=14, learning_rate=1e-1, aux_loss_weight=10
             )
             data = make_data(tensor_dataset, text_dataset, qe, attributions)
@@ -67,6 +67,6 @@ class TestAttributeQE(unittest.TestCase):
             assert 'epoch=0.ckpt' in os.listdir(data_dir)
             tensor_dataset = qe.val_dataset
             text_dataset = qe.val_dataset_orig
-            attributions = qe_roberta_attention_explainer(qe, tensor_dataset, num_workers=1)
+            attributions = qe_roberta_attention_explainer(qe, tensor_dataset, text_dataset, num_workers=1)
             data = make_data(tensor_dataset, text_dataset, qe, attributions)
             assert len(data) > 0
