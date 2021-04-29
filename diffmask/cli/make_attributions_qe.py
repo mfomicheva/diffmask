@@ -10,6 +10,7 @@ from diffmask.attributions.schulz import qe_roberta_schulz_explainer
 from diffmask.attributions.guan import qe_roberta_guan_explainer
 from diffmask.attributions.integrated_gradient import qe_integrated_gradient_explainer
 from diffmask.attributions.attention import qe_roberta_attention_explainer
+from diffmask.attributions.lime_qe import qe_lime_explainer
 
 
 EXLAINERS = {
@@ -17,6 +18,7 @@ EXLAINERS = {
     "guan": qe_roberta_guan_explainer,
     "intergrated_gradient": qe_integrated_gradient_explainer,
     "attention": qe_roberta_attention_explainer,
+    "lime": qe_lime_explainer,
 }
 
 
@@ -46,7 +48,7 @@ if __name__ == '__main__':
     tensor_dataset = qe.test_dataset if params.data_split == 'test' else qe.val_dataset
     text_dataset = qe.test_dataset_orig if params.data_split == 'test' else qe.val_dataset_orig
     attributions = EXLAINERS[params.explainer](
-        qe, tensor_dataset, save=params.save, input_only=params.input_only, steps=params.steps,
+        qe, tensor_dataset, text_dataset, save=params.save, input_only=params.input_only, steps=params.steps,
         batch_size=params.batch_size, num_layers=params.num_layers, learning_rate=params.lr,
         aux_loss_weight=params.aux_loss_weight
     )
