@@ -3,14 +3,14 @@ from collections import defaultdict
 from diffmask.utils.exceptions import TokenizationError
 
 
-def map_bpe_moses(bpe_tokens, moses_tokens):  # all special tokens need to be previously excluded from bpe_tokens
+def map_bpe_moses(bpe_tokens, moses_tokens, sep='▁'):  # all special tokens need to be previously excluded from bpe_tokens
     bpe_tokens_orig = bpe_tokens
     bpe_tokens = []
     for bpe_tok in bpe_tokens_orig:
-        if bpe_tok == '▁':
+        if bpe_tok == sep:
             bpe_tokens.append(bpe_tok)
         else:
-            bpe_tokens.append(bpe_tok.lstrip('▁'))
+            bpe_tokens.append(bpe_tok.lstrip(sep))
     bpe_tokens = ' '.join(bpe_tokens)
     moses_tokens = ' '.join(moses_tokens)
     chrt_idx_bpe = 0
@@ -52,7 +52,7 @@ def map_bpe_moses(bpe_tokens, moses_tokens):  # all special tokens need to be pr
     return bpe_to_moses, moses_to_bpe
 
 
-def map_bpe_moses_bert(bpe_tokens, moses_tokens):
+def map_bpe_moses_bert(bpe_tokens, moses_tokens, sep='##'):
     tok_idx_bpe = 0
     tok_idx_moses = 0
     mapping = dict()
@@ -61,7 +61,8 @@ def map_bpe_moses_bert(bpe_tokens, moses_tokens):
             mapping[tok_idx_bpe] = tok_idx_moses
             break
         mapping[tok_idx_bpe] = tok_idx_moses
-        if "##" not in bpe_tokens[i + 1]:
+        split_idx = i + 1 if sep == '##' else i
+        if sep not in bpe_tokens[split_idx]:
             tok_idx_moses += 1
         tok_idx_bpe += 1
     bpe_to_moses = mapping
