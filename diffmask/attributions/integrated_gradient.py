@@ -22,10 +22,12 @@ def integrated_gradient(
 
     hidden_states[hidden_state_idx].requires_grad_(True)
 
+    device = model.device
+
     def _noisy_hidden_state(alpha):
         if q_z_loc is not None:
             assert q_z_scale is not None
-            # alpha = 1 - alpha
+            alpha = (1 - alpha).to(device)
             return [torch.distributions.Normal(
                 loc=alpha * hidden_states[hidden_state_idx] + (1 - alpha).unsqueeze(-1) * q_z_loc,
                 scale=(q_z_scale + 1e-8) * (1 - alpha).unsqueeze(-1),
