@@ -11,6 +11,9 @@ from diffmask.attributions.guan import qe_roberta_guan_explainer
 from diffmask.attributions.integrated_gradient import qe_integrated_gradient_explainer
 from diffmask.attributions.attention import qe_roberta_attention_explainer
 from diffmask.attributions.lime_qe import qe_lime_explainer
+from diffmask.attributions.hidden_states_stats import hidden_states_statistics
+
+from diffmask.utils.getter_setter import roberta_getter
 
 
 EXLAINERS = {
@@ -47,8 +50,14 @@ if __name__ == '__main__':
 
     tensor_dataset = qe.test_dataset if params.data_split == 'test' else qe.val_dataset
     text_dataset = qe.test_dataset_orig if params.data_split == 'test' else qe.val_dataset_orig
+
+    hidden_states_stats = None
+    if params.precompute_hidden_states:
+        hidden_states_stats = all_q_z_loc, all_q_z_scale = hidden_states_statistics(
+            qe, qe.net.roberta, roberta_getter, input_only=params.input_only)
+
     attributions = EXLAINERS[params.explainer](
         qe, tensor_dataset, text_dataset, save=params.save, input_only=params.input_only, steps=params.steps,
         batch_size=params.batch_size, num_layers=params.num_layers, learning_rate=params.lr,
-        aux_loss_weight=params.aux_loss_weight
+        aux_loss_weight=params.aux_loss_weight, hidden_states_stats=hidden_states_stats
     )
