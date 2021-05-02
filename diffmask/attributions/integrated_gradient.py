@@ -14,13 +14,24 @@ from ..utils.getter_setter import (
 
 
 def integrated_gradient(
-    model, inputs_dict, getter, setter, label_getter, hidden_state_idx=0, steps=10
+    model, inputs_dict, getter, setter, label_getter, hidden_state_idx=0, steps=10, q_z_loc=None, q_z_scale=None,
 ):
 
     with torch.no_grad():
         _, hidden_states = getter(model, inputs_dict)
 
     hidden_states[hidden_state_idx].requires_grad_(True)
+
+    def _noisy_hidden_state(alpha):
+        if q_z_loc is not None:
+            assert q_z_scale is not None
+            alpha = 1 - alpha
+            return [torch.distributions.Normal(
+                loc=alpha * hidden_states[hidden_state_idx] + (1 - alpha).unsqueeze(-1) * q_z_loc,
+                scale=(q_z_scale + 1e-8) * (1 - alpha).unsqueeze(-1),
+            )]
+        else:
+            return [hidden_states[hidden_state_idx] * alpha]
 
     grads = (
         sum(
@@ -30,7 +41,7 @@ def integrated_gradient(
                         model,
                         inputs_dict,
                         hidden_states=[None] * hidden_state_idx
-                        + [hidden_states[hidden_state_idx] * alpha]
+                        + _noisy_hidden_state(alpha)
                         + [None] * (len(hidden_states) - hidden_state_idx - 1),
                     )[0],
                     inputs_dict,
@@ -50,6 +61,7 @@ def integrated_gradient(
 def qe_integrated_gradient_explainer(
         qe_model, tensor_dataset, text_dataset, save=None, load=None, steps=50, batch_size=1, num_layers=14,
         learning_rate=1e-1, aux_loss_weight=10, verbose=False, num_workers=20, input_only=False,
+        hidden_states_stats=None,
 ):
 
     if load is not None:
@@ -69,6 +81,12 @@ def qe_integrated_gradient_explainer(
         }
         all_attributions = []
         for layer_idx in range(num_layers):
+            if hidden_states_stats is not None:
+                q_z_locs, q_z_scales = hidden_states_stats
+                q_z_loc = q_z_locs[layer_idx].unsqueeze(0).to(device)
+                q_z_scale = q_z_scales[layer_idx].unsqueeze(0).to(device)
+            else:
+                q_z_loc, q_z_scale = None, None
             layer_attributions = integrated_gradient(
                 model=qe_model.net,
                 inputs_dict=inputs_dict,
@@ -77,6 +95,8 @@ def qe_integrated_gradient_explainer(
                 label_getter=label_getter_fn,
                 hidden_state_idx=layer_idx,
                 steps=steps,
+                q_z_loc=q_z_loc,
+                q_z_scale=q_z_scale,
             ).sum(-1).abs()
             all_attributions.append(layer_attributions.unsqueeze(-1))
         all_attributions = torch.cat(all_attributions, -1)  # B, T, L
