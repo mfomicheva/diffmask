@@ -19,7 +19,7 @@ from diffmask.utils.getter_setter import roberta_getter
 EXLAINERS = {
     "schulz": qe_roberta_schulz_explainer,
     "guan": qe_roberta_guan_explainer,
-    "intergrated_gradient": qe_integrated_gradient_explainer,
+    "integrated_gradient": qe_integrated_gradient_explainer,
     "attention": qe_roberta_attention_explainer,
     "lime": qe_lime_explainer,
 }
