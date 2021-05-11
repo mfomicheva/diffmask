@@ -18,7 +18,9 @@ if __name__ == '__main__':
         torch.manual_seed(hparams.seed)
         np.random.seed(hparams.seed)
 
+    model_name = 'qe_{}'.format(hparams.model)
     checkpoint_callback = pl.callbacks.ModelCheckpoint(
+        prefix=model_name,
         filepath=hparams.model_path,
         save_top_k=1,
         verbose=True,
@@ -43,7 +45,7 @@ if __name__ == '__main__':
         progress_bar_refresh_rate=0,
         max_epochs=hparams.epochs,
         check_val_every_n_epoch=1,
-        logger=pl.loggers.TensorBoardLogger("outputs", name="qe"),
+        logger=pl.loggers.TensorBoardLogger(os.path.join(hparams.model_path, 'tb-logs'), name=model_name),
         checkpoint_callback=checkpoint_callback,
         gradient_clip_val=hparams.clip_grad,
     )
