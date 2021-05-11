@@ -6,13 +6,14 @@ from diffmask.utils.exceptions import TokenizationError
 
 class SampleAttributions:
 
-    def __init__(self, input_ids, attributions, mask, tokenizer, sent_label, sent_pred=None):
+    def __init__(self, input_ids, attributions, mask, tokenizer, sent_label, sent_pred=None, word_labels=None):
         self.input_ids = input_ids
         self.attributions = attributions
         self.mask = mask
         self.tokenizer = tokenizer
         self.sent_pred = sent_pred
         self.sent_label = sent_label
+        self.word_labels = word_labels
         self.attributions_source = dict()
         self.attributions_target = dict()
         self.attributions_special = dict()
@@ -179,7 +180,7 @@ def format_sample_attributions(
 ):
     input_ids, mask, _, sent_labels = sample
     sample_attributions = SampleAttributions(
-        input_ids, attributions, mask, tokenizer, sent_labels.item(), sent_pred=sent_pred)
+        input_ids, attributions, mask, tokenizer, sent_labels.item(), sent_pred=sent_pred, word_labels=word_labels)
     sample_attributions.format_attributions(normalize=normalize, invert=invert, target_only=target_only)
     mapped_source = None
     if not target_only:
