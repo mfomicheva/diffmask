@@ -15,6 +15,8 @@ from diffmask.attributions.hidden_states_stats import hidden_states_statistics
 
 from diffmask.utils.getter_setter import roberta_getter
 
+from diffmask.cli.util import update_hparams
+
 
 EXLAINERS = {
     "schulz": qe_roberta_schulz_explainer,
@@ -28,7 +30,6 @@ EXLAINERS = {
 if __name__ == '__main__':
     parser = make_attributions_parser()
     params = parser.parse_args()
-    print(params)
     device = "cuda" if params.use_cuda else "cpu"
 
     if params.seed is not None:
@@ -44,6 +45,9 @@ if __name__ == '__main__':
             raise ValueError
     else:
         qe = QualityEstimationRegression.load_from_checkpoint(params.model_path).to(device)
+
+    params = update_hparams(qe.hparams, params)
+    print(params)
 
     qe.freeze()
     qe.prepare_data()
