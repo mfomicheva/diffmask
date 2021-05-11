@@ -4,7 +4,10 @@ import argparse
 def make_train_parser():
     parser = argparse.ArgumentParser()
     parser.add_argument("--use_cuda", action='store_true', default=False)
-    parser.add_argument("--model", type=str, default="xlm-roberta-base", choices=["bert-base-multilingual-cased", "xlm-roberta-base"])
+    parser.add_argument(
+        "--model", type=str, default="xlm-roberta-base",
+        choices=["bert-base-multilingual-cased", "xlm-roberta-base", "xlm-roberta-large"]
+    )
     parser.add_argument("--architecture", type=str, default="roberta", choices=["bert", "roberta"])
     parser.add_argument("--src_train_filename", type=str)
     parser.add_argument("--tgt_train_filename", type=str)
