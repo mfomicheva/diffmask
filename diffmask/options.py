@@ -55,6 +55,7 @@ def make_attributions_parser():
     parser.add_argument("--steps", default=50, type=int)
     parser.add_argument("--input_only", default=False, action="store_true")
     parser.add_argument("--save", default=None, type=str)
+    parser.add_argument("--load", default=None, type=str)
     parser.add_argument("--data_split", default="valid", choices=["test", "valid"])
     parser.add_argument("--batch_size", default=None, type=int)
     parser.add_argument("--explainer", default="schulz")
