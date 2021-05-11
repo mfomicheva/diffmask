@@ -27,7 +27,6 @@ if __name__ == '__main__':
         monitor='val_loss',
     )
 
-    assert not os.path.exists(hparams.model_path)
     if hparams.num_labels == 1:
         qe = QualityEstimationRegression(hparams)
     elif hparams.num_labels == 2:
