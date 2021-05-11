@@ -12,6 +12,8 @@ from ..utils.getter_setter import (
     gru_setter,
 )
 
+from diffmask.attributions.util import load_attributions
+
 
 def integrated_gradient(
     model, inputs_dict, getter, setter, label_getter, hidden_state_idx=0, steps=10, q_z_loc=None, q_z_scale=None,
@@ -68,7 +70,7 @@ def qe_integrated_gradient_explainer(
 ):
 
     if load is not None:
-        result = pickle.load(open(load, 'rb'))
+        result = load_attributions(load)
         return result
 
     device = next(qe_model.parameters()).device

@@ -12,6 +12,8 @@ from diffmask.utils.getter_setter import (
     gru_setter,
 )
 
+from diffmask.attributions.util import load_attributions
+
 
 def guan_loss(**kwargs):
     return {
@@ -96,7 +98,7 @@ def qe_roberta_guan_explainer(
 ):
 
     if load is not None:
-        result = pickle.load(open(load, 'rb'))
+        result = load_attributions(load)
         return result
 
     device = next(qe_model.parameters()).device

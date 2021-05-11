@@ -9,6 +9,8 @@ from diffmask.models.quality_estimation import QualityEstimationRegression
 
 from lime.lime_text import LimeTextExplainer
 
+from diffmask.attributions.util import load_attributions
+
 
 def predict(qe_model, srcs, tgts, labels):
     tensor_dataset, _ = make_tensors(srcs, tgts, labels, qe_model.tokenizer, 'roberta')
@@ -45,7 +47,7 @@ def qe_lime_explainer(
         learning_rate=1e-1, aux_loss_weight=10, verbose=False, num_workers=20, input_only=False,
 ):
     if load is not None:
-        result = pickle.load(open(load, 'rb'))
+        result = load_attributions(load)
         return result
 
     explainer = LimeTextExplainer(class_names=['score', 'score'], bow=False, split_expression=' ')

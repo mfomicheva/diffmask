@@ -13,6 +13,8 @@ from diffmask.utils.getter_setter import (
     gru_setter,
 )
 
+from diffmask.attributions.util import load_attributions
+
 
 def schulz_loss(q_z_loc=None, q_z_scale=None, **kwargs):
     return {
@@ -103,7 +105,7 @@ def qe_roberta_schulz_explainer(
         batch_size=1, num_layers=14, learning_rate=1e-1, aux_loss_weight=10, num_workers=20, hidden_states_stats=None,
 ):
     if load is not None:
-        result = pickle.load(open(load, 'rb'))
+        result = load_attributions(load)
         return result
 
     device = next(qe_model.parameters()).device
