@@ -53,7 +53,7 @@ if __name__ == '__main__':
 
     hidden_states_stats = None
     if params.precompute_hidden_states:
-        hidden_states_stats = all_q_z_loc, all_q_z_scale = hidden_states_statistics(
+        hidden_states_stats = hidden_states_statistics(
             qe, qe.net.roberta, roberta_getter, input_only=params.input_only)
 
     attributions = EXLAINERS[params.explainer](
