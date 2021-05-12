@@ -19,5 +19,5 @@ def update_hparams(ckpt_hparams, new_hparams):
             print('Value for the argument {} is not provided. Value {} will be inherited from the trained model'.format(
                 p, d_ckpt_hparams[p]
             ))
-        d_new_hparams[p] = v
+            d_new_hparams[p] = v
     return new_hparams
