@@ -1,11 +1,15 @@
 
 
-def update_hparams(ckpt_hparams, new_hparams):
+def update_hparams(ckpt_hparams, new_hparams, overrides=None):
     d_ckpt_hparams = vars(ckpt_hparams)
     d_new_hparams = vars(new_hparams)
     for p, v in d_new_hparams.items():
-        if p in d_ckpt_hparams:
-            if v != d_ckpt_hparams[p]:
+        if p not in d_ckpt_hparams:
+            continue
+        if v != d_ckpt_hparams[p]:
+            if overrides is not None and p in overrides:
+                d_ckpt_hparams[p] = v
+            else:
                 try:
                     assert d_ckpt_hparams[p] is None
                 except AssertionError:

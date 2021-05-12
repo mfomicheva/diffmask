@@ -67,4 +67,5 @@ def make_attributions_parser():
     parser.add_argument("--aux_loss_weight", default=10, type=int)
     parser.add_argument("--seed", default=None, type=int)
     parser.add_argument("--precompute_hidden_states", default=False, action='store_true')
+    parser.add_argument("--overrides", default=None, nargs='+')
     return parser

@@ -46,7 +46,7 @@ if __name__ == '__main__':
     else:
         qe = QualityEstimationRegression.load_from_checkpoint(params.model_path).to(device)
 
-    params = update_hparams(qe.hparams, params)
+    params = update_hparams(qe.hparams, params, overrides=params.overrides)
     print(params)
 
     qe.freeze()
