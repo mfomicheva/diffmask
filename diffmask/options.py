@@ -8,6 +8,7 @@ def make_train_parser():
         "--model", type=str, default="xlm-roberta-base",
         choices=["bert-base-multilingual-cased", "xlm-roberta-base", "xlm-roberta-large"]
     )
+    parser.add_argument("--model_pref", type=str, default=None)
     parser.add_argument("--architecture", type=str, default="roberta", choices=["bert", "roberta"])
     parser.add_argument("--src_train_filename", type=str)
     parser.add_argument("--tgt_train_filename", type=str)

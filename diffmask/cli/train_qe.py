@@ -18,7 +18,8 @@ if __name__ == '__main__':
         torch.manual_seed(hparams.seed)
         np.random.seed(hparams.seed)
 
-    model_name = 'qe_{}'.format(hparams.model)
+    custom_pref = hparams.model_pref if hparams.model_pref is not None else ''
+    model_name = 'qe_{}{}'.format(hparams.model, custom_pref)
     checkpoint_callback = pl.callbacks.ModelCheckpoint(
         prefix=model_name,
         filepath=hparams.model_path,
