@@ -81,7 +81,11 @@ if __name__ == '__main__':
         attributions_data = [s for s in attributions_data if s[0].sent_label == 1]
     else:
         if params.threshold is not None:
-            attributions_data = [s for s in attributions_data if s[0].sent_label > params.threshold]
+            if params.threshold == 0.:
+                attributions_data = [s for s in attributions_data if 1 in s[0].word_labels]
+                # select all that contain at least one positive class label
+            else:
+                attributions_data = [s for s in attributions_data if s[0].sent_label > params.threshold]
         else:
             attributions_data = [s for s in attributions_data if s[0].sent_label > np.mean(predictions)]
     evaluation = EvaluateQE()
