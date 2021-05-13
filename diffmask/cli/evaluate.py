@@ -91,7 +91,7 @@ if __name__ == '__main__':
     for lid in layer_indexes:
         score = evaluation.auc_score_per_sample(attributions_data, lid, auprc=True)
         acc = evaluation.top1_accuracy(attributions_data, lid, topk=1)
-        random_acc = evaluation.top1_accuracy(evaluation, lid, topk=1, random=True)
+        random_acc = evaluation.top1_accuracy(attributions_data, lid, topk=1, random=True)
         auc_scores.append(score)
         accs.append(acc)
     print('Best AUC: {}'.format(max(auc_scores)))
