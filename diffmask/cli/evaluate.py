@@ -36,7 +36,7 @@ if __name__ == '__main__':
     print(params)
 
     qe.freeze()
-    qe.prepare_data()
+    qe.prepare_data(invert_word_labels=params.invert_word_labels)
 
     dataset = qe.test_dataset if params.data_split == 'test' else qe.val_dataset
     orig_dataset = qe.test_dataset_orig if params.data_split == 'test' else qe.val_dataset_orig

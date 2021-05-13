@@ -54,7 +54,7 @@ def make_tensors(
 
 def load_sent_level(
         path_src, path_tgt, path_labels, tokenizer, architecture, regression=False, max_seq_length=128,
-        path_word_labels=None, target_only=False,
+        path_word_labels=None, target_only=False, invert_word_labels=False
 ):
 
     def _read_file(path, label=False):
@@ -63,7 +63,10 @@ def load_sent_level(
     def _read_word_labels(path):
         out = []
         for l in open(path):
-            out.append([int(val.strip()) for val in l.split()])
+            vals = [int(val.strip()) for val in l.split()]
+            if invert_word_labels:
+                vals = list(map(lambda x: abs(x-1), vals))
+            out.append(vals)
         return out
 
     srcs = _read_file(path_src)
@@ -94,24 +97,24 @@ class QualityEstimation(pl.LightningModule):
         self.tokenizer = None
         self.num_workers = num_workers
 
-    def prepare_data(self):
+    def prepare_data(self, invert_word_labels=False):
         if self.hparams.src_train_filename is not None:
             self.train_dataset, self.train_dataset_orig = load_sent_level(
                 self.hparams.src_train_filename, self.hparams.tgt_train_filename, self.hparams.labels_train_filename,
                 self.tokenizer, self.hparams.architecture, path_word_labels=self.hparams.word_labels_train_filename,
-                regression=self.regression, target_only=self.hparams.target_only
+                regression=self.regression, target_only=self.hparams.target_only, invert_word_labels=invert_word_labels,
             )
         if self.hparams.src_val_filename is not None:
             self.val_dataset, self.val_dataset_orig = load_sent_level(
                 self.hparams.src_val_filename, self.hparams.tgt_val_filename, self.hparams.labels_val_filename,
                 self.tokenizer, self.hparams.architecture, path_word_labels=self.hparams.word_labels_val_filename,
-                regression=self.regression, target_only=self.hparams.target_only
+                regression=self.regression, target_only=self.hparams.target_only, invert_word_labels=invert_word_labels
             )
         if self.hparams.src_test_filename is not None:
             self.test_dataset, self.test_dataset_orig = load_sent_level(
                 self.hparams.src_test_filename, self.hparams.tgt_test_filename, self.hparams.labels_test_filename,
                 self.tokenizer, self.hparams.architecture, path_word_labels=self.hparams.word_labels_test_filename,
-                regression=self.regression, target_only=self.hparams.target_only
+                regression=self.regression, target_only=self.hparams.target_only, invert_word_labels=invert_word_labels
             )
 
     def make_sampler(self):

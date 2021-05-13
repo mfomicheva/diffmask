@@ -70,4 +70,5 @@ def make_attributions_parser():
     parser.add_argument("--overrides", default=None, nargs='+')
     parser.add_argument("--threshold", default=None, type=float)
     parser.add_argument("--layer_id", default=None, type=int)
+    parser.add_argument("--invert_word_labels", default=False, action='store_true')
     return parser
