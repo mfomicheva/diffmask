@@ -151,6 +151,22 @@ class EvaluateQE:
         return score
 
     @staticmethod
+    def top1_recall(data, layer_id, random=False, verbose=False):
+        data = list(zip(*data))[2]
+        correct = 0
+        for i, sample in enumerate(data):
+            gold = set([idx for idx, val in enumerate(sample.word_labels) if val == 1])
+            attributions = sample.attributions_mapped[layer_id]
+            if random:
+                attributions = torch.rand((len(attributions),)).tolist()
+            highest_attributions = np.argsort(attributions)[::-1]
+            highest_attributions = highest_attributions[:len(gold)]
+            correct_in_sample = len([idx for idx in highest_attributions if idx in gold])
+            correct_in_sample = correct_in_sample/len(gold)
+            correct += correct_in_sample
+        return correct / len(data)
+
+    @staticmethod
     def top1_accuracy(data, layer_id, topk=1, random=False, verbose=False):
         data = list(zip(*data))[2]
         total_by_sent = 0

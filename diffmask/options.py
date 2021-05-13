@@ -69,4 +69,5 @@ def make_attributions_parser():
     parser.add_argument("--precompute_hidden_states", default=False, action='store_true')
     parser.add_argument("--overrides", default=None, nargs='+')
     parser.add_argument("--threshold", default=None, type=float)
+    parser.add_argument("--layer_id", default=None, type=int)
     return parser
