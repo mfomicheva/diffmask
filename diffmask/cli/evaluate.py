@@ -66,7 +66,6 @@ if __name__ == '__main__':
         print('Q75 predictions: {}'.format(np.quantile(predictions, 0.75)))
         print('Mean humans: {}'.format(np.mean(labels)))
         print('Median humans: {}'.format(np.median(labels)))
-        print('Histogram humans')
 
     word_labels = []
     for _, _, _, ls in orig_dataset:
@@ -82,7 +81,7 @@ if __name__ == '__main__':
     else:
         if params.threshold is not None:
             if params.threshold == 0.:
-                attributions_data = [s for s in attributions_data if 1 in s[0].word_labels]
+                attributions_data = [s for s in attributions_data if sum(s[0].word_labels) >= 1]
                 # select all that contain at least one positive class label
             else:
                 attributions_data = [s for s in attributions_data if s[0].sent_label > params.threshold]
@@ -116,6 +115,9 @@ if __name__ == '__main__':
     print('Best layer REC@top1: {}'.format(np.argmax(recs)))
     print('Best layer for ACC@top1: {}'.format(np.argmax(accs)))
     print('Total data used for evaluation: {}'.format(len(attributions_data)))
+    print('Proportion of positive class labels in selection: {}'.format(
+        sum([sum(s[0].word_labels) for s in attributions_data])/sum([len(s[0].word_labels) for s in attributions_data])
+    ))
 
     if params.layer_id is not None:
         score_auc = evaluation.auc_score_per_sample(attributions_data, params.layer_id, auprc=False)
