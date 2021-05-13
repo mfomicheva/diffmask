@@ -38,8 +38,8 @@ if __name__ == '__main__':
     qe.freeze()
     qe.prepare_data()
 
-    orig_dataset = qe.test_dataset_orig
-    dataset = qe.test_dataset
+    dataset = qe.test_dataset if params.data_split == 'test' else qe.val_dataset
+    orig_dataset = qe.test_dataset_orig if params.data_split == 'test' else qe.val_dataset_orig
     data_loader = torch.utils.data.DataLoader(dataset, batch_size=8, shuffle=False, num_workers=20)
     if params.num_labels > 1:
         labels = torch.LongTensor([t[2] for t in orig_dataset])
