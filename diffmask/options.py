@@ -34,6 +34,8 @@ def make_train_parser():
     parser.add_argument("--clip_grad", default=1., type=float)
     parser.add_argument("--warmup_percentage", default=0., type=float, help="Percentage of iterations for warmup")
     parser.add_argument("--weight_decay", default=0., type=float,)
+    parser.add_argument("--nfolds", default=1, type=int)
+    parser.add_argument("--opt_mode", default='min', type=str, choices=['min', 'max'])
     return parser
 
 
