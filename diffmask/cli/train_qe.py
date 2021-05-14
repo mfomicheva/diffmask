@@ -73,13 +73,14 @@ if __name__ == '__main__':
         if best_val_score is None:
             best_val_score = current_best_value
             best_model_path = current_best_model
-        elif _op((current_best_value, best_val_score)) != current_best_value or current_best_value == best_val_score:
+        elif _op((current_best_value, best_val_score)) == current_best_value and current_best_value != best_val_score:
+            print('New best value: {}'.format(current_best_value))
+            print('New best model: {}'.format(current_best_model))
             print('Previous best value: {}'.format(best_val_score))
-            print('Deleting model {}'.format(current_best_model))
-            os.remove(current_best_model)
-        else:
+            print('Deleting previous model {}'.format(best_model_path))
+            os.remove(best_model_path)
             best_val_score = current_best_value
             best_model_path = current_best_model
-            print('New best model: {}'.format(current_best_model))
+        else:
+            print('Value {} is not in the top'.format(current_best_value))
     print('SAVED BEST MODEL AT: {}'.format(best_model_path))
-
