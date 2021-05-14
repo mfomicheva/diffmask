@@ -13,14 +13,14 @@ if __name__ == '__main__':
     parser = make_train_parser()
     hparams = parser.parse_args()
     print(hparams)
-
-    if hparams.seed is not None:
-        torch.manual_seed(hparams.seed)
-        np.random.seed(hparams.seed)
-
-    custom_pref = hparams.model_pref if hparams.model_pref is not None else ''
-    model_name = 'qe_{}{}'.format(hparams.model, custom_pref)
+    
+    if hparams.model_pref is not None:
+        model_name = '{}.'.format(hparams.model_pref)
+    else:
+        model_name = '{}.'.format(hparams.model)
     best_val_score = None
+    best_model_path = None
+
     _op = min if hparams.opt_mode == 'min' else max
 
     for n in range(1, hparams.nfolds + 1):
@@ -58,12 +58,27 @@ if __name__ == '__main__':
             gradient_clip_val=hparams.clip_grad,
         )
         trainer.fit(qe)
-
+        
         current_best_model = _op(
             checkpoint_callback.best_k_models,
             key=checkpoint_callback.best_k_models.get
         )
         current_best_value = checkpoint_callback.best_k_models[current_best_model]
+        
+        print('Random seed: {}'.format(hparams.seed * n))
+        print('Current best value: {}'.format(current_best_value))
+        print('Current best model: {}'.format(current_best_model))        
 
-        if best_val_score is not None and _op((current_best_value, best_val_score)) != current_best_value:
+        if best_val_score is None:
+            best_val_score = current_best_value
+            best_model_path = current_best_model
+        elif _op((current_best_value, best_val_score)) != current_best_value or current_best_value == best_val_score:
+            print('Previous best value: {}'.format(best_val_score))
+            print('Deleting model {}'.format(current_best_model))
             os.remove(current_best_model)
+        else:
+            best_val_score = current_best_value
+            best_model_path = current_best_model
+            print('New best model: {}'.format(current_best_model))
+    print('SAVED BEST MODEL AT: {}'.format(best_model_path))
+
