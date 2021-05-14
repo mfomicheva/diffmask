@@ -13,11 +13,7 @@ if __name__ == '__main__':
     parser = make_train_parser()
     hparams = parser.parse_args()
     print(hparams)
-    
-    if hparams.model_pref is not None:
-        model_name = '{}.'.format(hparams.model_pref)
-    else:
-        model_name = '{}.'.format(hparams.model)
+
     best_val_score = None
     best_model_path = None
 
@@ -27,6 +23,11 @@ if __name__ == '__main__':
         if hparams.seed is not None:
             torch.manual_seed(hparams.seed * n)
             np.random.seed(hparams.seed * n)
+
+        if hparams.model_pref is not None:
+            model_name = '{}{}.'.format(hparams.model_pref, '.{}'.format(hparams.seed) or '')
+        else:
+            model_name = '{}{}.'.format(hparams.model, '.{}'.format(hparams.seed) or '')
 
         checkpoint_callback = pl.callbacks.ModelCheckpoint(
             prefix=model_name,
