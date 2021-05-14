@@ -25,9 +25,9 @@ if __name__ == '__main__':
             np.random.seed(hparams.seed * n)
 
         if hparams.model_pref is not None:
-            model_name = '{}{}.'.format(hparams.model_pref, '.{}'.format(hparams.seed) or '')
+            model_name = '{}{}.'.format(hparams.model_pref, '.{}'.format(hparams.seed * n) or '')
         else:
-            model_name = '{}{}.'.format(hparams.model, '.{}'.format(hparams.seed) or '')
+            model_name = '{}{}.'.format(hparams.model, '.{}'.format(hparams.seed * n) or '')
 
         checkpoint_callback = pl.callbacks.ModelCheckpoint(
             prefix=model_name,
