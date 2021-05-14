@@ -45,6 +45,7 @@ def explain_instance(explainer, qe_model, text_a, text_b, mode='regression'):
 def qe_lime_explainer(
         qe_model, tensor_dataset, text_dataset, save=None, load=None, steps=50, batch_size=1, num_layers=14,
         learning_rate=1e-1, aux_loss_weight=10, verbose=False, num_workers=20, input_only=False,
+        hidden_states_stats=None
 ):
     if load is not None:
         result = load_attributions(load)
