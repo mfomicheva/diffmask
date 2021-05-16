@@ -90,7 +90,7 @@ if __name__ == '__main__':
     auprc_scores = []
     for lid in layer_indexes:
         if params.explainer == 'lime':
-            scores = [a[:, 0] for a in attributions]
+            scores = [a[:, 0].detach().cpu().numpy() for a in attributions]
             labels = [s[3] for i, s in enumerate(orig_dataset) if i in selected_indexes]
         else:
             scores, labels = evaluation.get_scores_and_labels(attributions_data, lid)
