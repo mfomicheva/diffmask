@@ -15,7 +15,7 @@ class EvaluateQE:
         selected = []
         for idx, s in enumerate(text_dataset):
             select = True
-            if len(list(set(s[0].word_labels))) == 1:
+            if len(list(set(s[3]))) == 1:
                 select = False
             if params.num_labels > 1 and s[2] != 1:
                 select = False
