@@ -73,13 +73,15 @@ if __name__ == '__main__':
 
     print('Proportion of positive class labels: {}'.format(sum(word_labels) / len(word_labels)))
 
-    attributions = load_attributions(params.load)
-    attributions_data = make_data(dataset, orig_dataset, qe, attributions, silent=False, predictions=predictions)
     evaluation = EvaluateQE()
-
     selected_indexes = evaluation.select_data(orig_dataset, predictions, params)
+
+    attributions = load_attributions(params.load)
+    if params.explainer != 'lime':
+        attributions_data = make_data(dataset, orig_dataset, qe, attributions, silent=False, predictions=predictions)
+        attribution_data = [a for i, a in attributions_data if i in selected_indexes]
+
     attributions = [a for i, a in attributions if i in selected_indexes]
-    attribution_data = [a for i, a in attributions_data if i in selected_indexes]
 
     layer_indexes = list(range(1)) if params.explainer == 'lime' else list(range(params.num_layers))
     accs = []
