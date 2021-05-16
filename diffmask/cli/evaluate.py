@@ -79,9 +79,9 @@ if __name__ == '__main__':
     attributions = load_attributions(params.load)
     if params.explainer != 'lime':
         attributions_data = make_data(dataset, orig_dataset, qe, attributions, silent=False, predictions=predictions)
-        attribution_data = [a for i, a in attributions_data if i in selected_indexes]
+        attribution_data = [a for i, a in enumerate(attributions_data) if i in selected_indexes]
 
-    attributions = [a for i, a in attributions if i in selected_indexes]
+    attributions = [a for i, a in enumerate(attributions) if i in selected_indexes]
 
     layer_indexes = list(range(1)) if params.explainer == 'lime' else list(range(params.num_layers))
     accs = []
