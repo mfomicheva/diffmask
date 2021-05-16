@@ -114,13 +114,13 @@ if __name__ == '__main__':
     print('Best layer AUPRC: {}'.format(np.argmax(auprc_scores)))
     print('Best layer REC@top1: {}'.format(np.argmax(recs)))
     print('Best layer for ACC@top1: {}'.format(np.argmax(accs)))
-    print('Total data used for evaluation: {}'.format(len(attributions_data)))
+    print('Total data used for evaluation: {}'.format(len(selected_indexes)))
     print('Proportion of positive class labels in selection: {}'.format(
-        sum([sum(s[0].word_labels) for s in attributions_data])/sum([len(s[0].word_labels) for s in attributions_data])
+        sum([sum(s[0].word_labels) for s in selected_indexes])/sum([len(s[0].word_labels) for s in selected_indexes])
     ))
 
     if params.layer_id is not None:
-        scores, labels = evaluation.get_scores_and_labels(attributions_data, params.layer_id)
+        scores, labels = evaluation.get_scores_and_labels(selected_indexes, params.layer_id)
         score_auc = evaluation.auc_score_per_sample(scores, labels, auprc=False)
         score_auprc = evaluation.auc_score_per_sample(scores, labels, auprc=True)
         acc = evaluation.top1_accuracy(scores, labels)
