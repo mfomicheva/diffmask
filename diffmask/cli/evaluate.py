@@ -75,31 +75,29 @@ if __name__ == '__main__':
 
     attributions = load_attributions(params.load)
     attributions_data = make_data(dataset, orig_dataset, qe, attributions, silent=False, predictions=predictions)
-    attributions_data = [s for s in attributions_data if len(list(set(s[0].word_labels))) != 1]
-    if params.num_labels > 1:
-        attributions_data = [s for s in attributions_data if s[0].sent_label == 1]
-    else:
-        if params.threshold is not None:
-            if params.threshold == 0.:
-                attributions_data = [s for s in attributions_data if sum(s[0].word_labels) >= 1]
-                # select all that contain at least one positive class label
-            else:
-                attributions_data = [s for s in attributions_data if s[0].sent_label > params.threshold]
-        else:
-            attributions_data = [s for s in attributions_data if s[0].sent_label > np.mean(predictions)]
     evaluation = EvaluateQE()
-    layer_indexes = list(range(params.num_layers))
+
+    selected_indexes = evaluation.select_data(orig_dataset, predictions, params)
+    attributions = [a for i, a in attributions if i in selected_indexes]
+    attribution_data = [a for i, a in attributions_data if i in selected_indexes]
+
+    layer_indexes = list(range(1)) if params.explainer == 'lime' else list(range(params.num_layers))
     accs = []
     recs = []
     auc_scores = []
     auprc_scores = []
     for lid in layer_indexes:
-        score_auc = evaluation.auc_score_per_sample(attributions_data, lid, auprc=False)
-        score_auprc = evaluation.auc_score_per_sample(attributions_data, lid, auprc=True)
-        acc = evaluation.top1_accuracy(attributions_data, lid)
-        rec = evaluation.top1_recall(attributions_data, lid)
-        random_acc = evaluation.top1_accuracy(attributions_data, lid, random=True)
-        random_rec = evaluation.top1_recall(attributions_data, lid, random=True)
+        if params.explainer == 'lime':
+            scores = [a[:, 0] for a in attributions]
+            labels = [s[3] for i, s in orig_dataset if i in selected_indexes]
+        else:
+            scores, labels = evaluation.get_scores_and_labels(attributions_data, lid)
+        score_auc = evaluation.auc_score_per_sample(scores, labels, auprc=False)
+        score_auprc = evaluation.auc_score_per_sample(scores, labels, auprc=True)
+        acc = evaluation.top1_accuracy(scores, labels)
+        rec = evaluation.top1_recall(scores, labels)
+        random_acc = evaluation.top1_accuracy(scores, labels, random=True)
+        random_rec = evaluation.top1_recall(scores, labels, random=True)
         auc_scores.append(score_auc)
         auprc_scores.append(score_auprc)
         accs.append(acc)
@@ -120,10 +118,11 @@ if __name__ == '__main__':
     ))
 
     if params.layer_id is not None:
-        score_auc = evaluation.auc_score_per_sample(attributions_data, params.layer_id, auprc=False)
-        score_auprc = evaluation.auc_score_per_sample(attributions_data, params.layer_id, auprc=True)
-        acc = evaluation.top1_accuracy(attributions_data, params.layer_id)
-        rec = evaluation.top1_recall(attributions_data, params.layer_id)
+        scores, labels = evaluation.get_scores_and_labels(attributions_data, params.layer_id)
+        score_auc = evaluation.auc_score_per_sample(scores, labels, auprc=False)
+        score_auprc = evaluation.auc_score_per_sample(scores, labels, auprc=True)
+        acc = evaluation.top1_accuracy(scores, labels)
+        rec = evaluation.top1_recall(scores, labels)
         print('AUC Layer {}: {}'.format(params.layer_id, score_auc))
         print('AUPRC Layer {}: {}'.format(params.layer_id, score_auprc))
         print('ACC@top1 Layer {}: {}'.format(params.layer_id, acc))

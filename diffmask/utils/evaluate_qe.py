@@ -11,6 +11,28 @@ from diffmask.utils.metrics import accuracy_precision_recall_f1, matthews_corr_c
 class EvaluateQE:
 
     @staticmethod
+    def select_data(text_dataset, predictions, params):
+        selected = []
+        for idx, s in enumerate(text_dataset):
+            select = True
+            if len(list(set(s[0].word_labels))) == 1:
+                select = False
+            if params.num_labels > 1 and s[2] != 1:
+                select = False
+            if params.threshold is not None:
+                if params.threshold == 0. and sum(s[0].word_labels) == 0:
+                    select = False
+                else:
+                    if s[2] <= params.threshold:
+                        select = False
+            else:
+                if s[2] <= np.mean(predictions):
+                    select = False
+            if select:
+                selected.append(idx)
+        return selected
+
+    @staticmethod
     def select_data_regression(data, max_error=None, max_size=None, min_pred=None, **kwargs):
         data = sorted(data, key=lambda s: s[0].sent_pred, reverse=True)
         if max_error is not None:
@@ -67,63 +89,30 @@ class EvaluateQE:
         print('Bad token attributions: {:.4f}'.format(res_bad))
         return res_all, res_src, res_tgt, res_bad, res_spec
 
-    @staticmethod
-    def precision_recall_curve(ys, yhats):
-        prec, rec, _ = precision_recall_curve(ys, yhats)
-        return rec, prec, _
-
-    @staticmethod
-    def make_flat_data(data, layer_id, random=False, majority=False):
-        ys = []
-        yhats = []
-        constant = None
-        if majority:
-            constant = sum([sum(s.word_labels) for s in data])/sum([len(s.word_labels) for s in data])
-        for i, sample in enumerate(data):
-            attributions = sample.attributions_mapped[layer_id]
-            if random:
-                if constant is not None:
-                    attributions = torch.full((len(attributions),), constant).tolist()
-                else:
-                    attributions = torch.rand((len(attributions),)).tolist()
-            for idx, val in enumerate(sample.word_labels):
-                ys.append(val)
-                yhats.append(attributions[idx])
-        return ys, yhats
-
-    @staticmethod
-    def make_curve(ys, yhats, curve_fn, scoring_fn):
-        x, y, _ = curve_fn(ys, yhats)
-        score = scoring_fn(ys, yhats)
-        return x, y, score
-
-    def auc_score_per_sample(self, data, layer_id, auprc=False, verbose=False):
-        data = list(zip(*data))[2]
+    def auc_score_per_sample(self, scores, labels, auprc=False, verbose=False):
         if auprc:
-            curve_fn = self.precision_recall_curve
+            curve_fn = self._precision_recall_curve
             score_fn = average_precision_score
         else:
             curve_fn = roc_curve
             score_fn = roc_auc_score
         aucs = []
         aucs_rand = []
-        for sample in data:
-            attributions = sample.attributions_mapped[layer_id]
-            rand = torch.rand((len(attributions),)).tolist()
-            labels = sample.word_labels
-            _, _, score = self.make_curve(labels, attributions, curve_fn, score_fn)
-            _, _, score_rand = self.make_curve(labels, rand, curve_fn, score_fn)
-            aucs.append(score)
-            aucs_rand.append(score_rand)
+        assert len(scores) == len(labels)
+        for sid in range(len(labels)):
+            rand = torch.rand((len(scores[sid]),)).tolist()
+            _, _, auc = self._make_curve(labels[sid], scores[sid], curve_fn, score_fn)
+            _, _, auc_rand = self._make_curve(labels[sid], rand, curve_fn, score_fn)
+            aucs.append(auc)
+            aucs_rand.append(auc_rand)
         if verbose:
             print('AUC score: {}'.format(np.mean(aucs)))
             print('AUC score random: {}'.format(np.mean(aucs_rand)))
         return np.mean(aucs)
 
-    def auc_score(self, data, layer_id, plot=False, save_plot=None, verbose=False, auprc=False, random_majority=False):
-        data = list(zip(*data))[2]
+    def auc_score(self, scores, labels, plot=False, save_plot=None, verbose=False, auprc=False, random_majority=False):
         if auprc:
-            curve_fn = self.precision_recall_curve
+            curve_fn = self._precision_recall_curve
             score_fn = average_precision_score
             x_label = 'Recall'
             y_label = 'Precision'
@@ -132,10 +121,10 @@ class EvaluateQE:
             score_fn = roc_auc_score
             x_label = 'False Positive Rate'
             y_label = 'True Positive Rate'
-        ys, yhats = self.make_flat_data(data, layer_id)
-        _, yhats_random = self.make_flat_data(data, layer_id, random=True, majority=random_majority)
-        x, y, score = self.make_curve(ys, yhats, curve_fn, score_fn)
-        x_rand, y_rand, score_rand = self.make_curve(ys, yhats_random, curve_fn, score_fn)
+        ys, yhats = self._make_flat_data(scores, labels)
+        _, yhats_random = self._make_flat_data(scores, labels, random=True, majority=random_majority)
+        x, y, score = self._make_curve(ys, yhats, curve_fn, score_fn)
+        x_rand, y_rand, score_rand = self._make_curve(ys, yhats_random, curve_fn, score_fn)
         if plot:
             pyplot.plot(x, y)
             pyplot.plot(x_rand, y_rand, linestyle='--', color='black')
@@ -151,32 +140,42 @@ class EvaluateQE:
         return score
 
     @staticmethod
-    def top1_recall(data, layer_id, random=False, verbose=False):
+    def get_scores_and_labels(data, lid):
         data = list(zip(*data))[2]
+        scores = []
+        labels = []
+        for sample in data:
+            labels.append(sample.word_labels)
+            scores.append(sample.attributions_mapped[lid])
+        return scores, labels
+
+    @staticmethod
+    def top1_recall(scores, labels, random=False, verbose=False):
         correct = 0
-        for i, sample in enumerate(data):
-            gold = set([idx for idx, val in enumerate(sample.word_labels) if val == 1])
-            attributions = sample.attributions_mapped[layer_id]
+        assert len(scores) == len(labels)
+        for sid in range(len(labels)):
+            gold = set([idx for idx, val in enumerate(labels[sid]) if val == 1])
+            scores_i = scores[sid]
             if random:
-                attributions = torch.rand((len(attributions),)).tolist()
-            highest_attributions = np.argsort(attributions)[::-1]
+                scores_i = torch.rand((len(scores_i),)).tolist()
+            highest_attributions = np.argsort(scores_i)[::-1]
             highest_attributions = highest_attributions[:len(gold)]
             correct_in_sample = len([idx for idx in highest_attributions if idx in gold])
             correct_in_sample = correct_in_sample/len(gold)
             correct += correct_in_sample
-        return correct / len(data)
+        return correct / len(labels)
 
     @staticmethod
-    def top1_accuracy(data, layer_id, topk=1, random=False, verbose=False):
-        data = list(zip(*data))[2]
+    def top1_accuracy(scores, labels, topk=1, random=False, verbose=False):
         total_by_sent = 0
         correct_by_sent = 0
-        for i, sample in enumerate(data):
-            gold = set([idx for idx, val in enumerate(sample.word_labels) if val == 1])
-            attributions = sample.attributions_mapped[layer_id]
+        assert len(labels) == len(scores)
+        for sid in range(len(labels)):
+            gold = set([idx for idx, val in enumerate(labels[sid]) if val == 1])
+            scores_i = scores[sid]
             if random:
-                attributions = torch.rand((len(attributions),)).tolist()
-            highest_attributions = np.argsort(attributions)[::-1]
+                scores_i = torch.rand((len(scores_i),)).tolist()
+            highest_attributions = np.argsort(scores_i)[::-1]
             highest_attributions = highest_attributions[:topk]
             if any([idx in gold for idx in highest_attributions]):
                 correct_by_sent += 1
@@ -217,3 +216,34 @@ class EvaluateQE:
                 print(sum(all_predictions.tolist()) / len(all_predictions.tolist()))
                 print(sum(all_labels.tolist()) / len(all_labels.tolist()))
         return all_predictions.squeeze().tolist()
+
+    @staticmethod
+    def _precision_recall_curve(ys, yhats):
+        prec, rec, _ = precision_recall_curve(ys, yhats)
+        return rec, prec, _
+
+    @staticmethod
+    def _make_flat_data(scores, labels, random=False, majority=False):
+        ys = []
+        yhats = []
+        constant = None
+        n_sents = len(labels)
+        if majority:
+            constant = sum([sum(labels[sid]) for sid in range(n_sents)])/sum([len(labels[sid]) for sid in range(n_sents)])
+        for sid in range(n_sents):
+            scores_i = scores[sid]
+            if random:
+                if constant is not None:
+                    scores_i = torch.full((len(scores[sid]),), constant).tolist()
+                else:
+                    scores_i = torch.rand((len(scores[sid]),)).tolist()
+            for idx, val in enumerate(labels[sid]):
+                ys.append(val)
+                yhats.append(scores_i[idx])
+        return ys, yhats
+
+    @staticmethod
+    def _make_curve(ys, yhats, curve_fn, scoring_fn):
+        x, y, _ = curve_fn(ys, yhats)
+        score = scoring_fn(ys, yhats)
+        return x, y, score
