@@ -20,7 +20,7 @@ class EvaluateQE:
             if params.num_labels > 1 and s[2] != 1:
                 select = False
             if params.threshold is not None:
-                if params.threshold == 0. and sum(s[0].word_labels) == 0:
+                if params.threshold == 0. and sum(s[3]) == 0:
                     select = False
                 else:
                     if s[2] <= params.threshold:
