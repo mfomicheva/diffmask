@@ -138,7 +138,7 @@ class SampleAttributionsMapping:
     @staticmethod
     def select_by_word_label(attributions, word_labels, bpe_moses_mapping):
         ids = [i for i, label in enumerate(word_labels) if label == 1]
-        return [a for i, a in enumerate(attributions) if bpe_moses_mapping[i] in ids]
+        return [a for i, a in enumerate(attributions) if i in ids]
 
 
 def make_data(tensor_dataset, text_dataset, qe_model, attributions, silent=False, normalize=False,
