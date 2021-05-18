@@ -89,6 +89,8 @@ if __name__ == '__main__':
             attributions_data = [s for s in attributions_data if s[0].sent_label > np.mean(predictions)]
     evaluation = EvaluateQE()
     layer_indexes = list(range(params.num_layers))
+    if params.explainer == 'attention':
+        layer_indexes = layer_indexes[1:-1]
     accs = []
     recs = []
     auc_scores = []
