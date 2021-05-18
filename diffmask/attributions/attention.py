@@ -5,6 +5,7 @@ import pickle
 def qe_roberta_attention_explainer(
         qe_model, tensor_dataset, text_dataset, save=None, batch_size=1, num_workers=20, head_idx=-1, load=None,
         steps=50, num_layers=14, learning_rate=1e-1, aux_loss_weight=10, verbose=False, input_only=False,
+        hidden_states_stats=None,
 ):
     device = next(qe_model.parameters()).device
     qe_model.net.roberta.encoder.output_attentions = True
